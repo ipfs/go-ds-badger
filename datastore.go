@@ -2,11 +2,12 @@ package badger
 
 import (
 	"bytes"
-	"errors"
+
 	badger "github.com/dgraph-io/badger/badger"
+
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	"github.com/jbenet/goprocess"
+	goprocess "github.com/jbenet/goprocess"
 )
 
 type datastore struct {
@@ -175,6 +176,32 @@ func (d *datastore) Close() (err error) {
 
 func (d *datastore) IsThreadSafe() {}
 
+type badgerBatch struct {
+	entries []*badger.Entry
+	db      *badger.KV
+}
+
 func (d *datastore) Batch() (ds.Batch, error) {
-	return nil, errors.New("not implemented")
+	return &badgerBatch{
+		db: d.DB,
+	}, nil
+}
+
+func (b *badgerBatch) Put(key ds.Key, value interface{}) error {
+	val, ok := value.([]byte)
+	if !ok {
+		return ds.ErrInvalidType
+	}
+
+	b.entries = badger.EntriesSet(b.entries, key.Bytes(), val)
+	return nil
+}
+
+func (b *badgerBatch) Commit() error {
+	return b.db.BatchSet(b.entries)
+}
+
+func (b *badgerBatch) Delete(key ds.Key) error {
+	b.entries = badger.EntriesDelete(b.entries, key.Bytes())
+	return nil
 }
