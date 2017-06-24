@@ -2,6 +2,8 @@ package badger
 
 import (
 	"bytes"
+	"sync"
+	"time"
 
 	badger "github.com/dgraph-io/badger/badger"
 
@@ -14,13 +16,14 @@ type datastore struct {
 	DB *badger.KV
 }
 
-func NewDatastore(path string) (*datastore, error) {
-	opt := badger.DefaultOptions
+func NewDatastore(path string, opt *badger.Options) (*datastore, error) {
+	if opt == nil {
+		opt = &badger.DefaultOptions
+	}
 	opt.Dir = path
 	opt.ValueDir = path
-	opt.ValueGCThreshold = 0
 
-	kv, err := badger.NewKV(&opt)
+	kv, err := badger.NewKV(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +33,7 @@ func NewDatastore(path string) (*datastore, error) {
 	}, nil
 }
 
-func (d *datastore) Put(key ds.Key, value interface{}) (err error) {
+func (d *datastore) Put(key ds.Key, value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
 		return ds.ErrInvalidType
@@ -51,17 +54,12 @@ func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
 	return item.Value(), nil
 }
 
-func (d *datastore) Has(key ds.Key) (exists bool, err error) {
-	var item badger.KVItem
-	err = d.DB.Get(key.Bytes(), &item)
-	if err != nil {
-		return false, err
-	}
+func (d *datastore) Has(key ds.Key) (bool, error) {
+	return d.DB.Exists(key.Bytes())
 
-	return item.Value() != nil, nil
 }
 
-func (d *datastore) Delete(key ds.Key) (err error) {
+func (d *datastore) Delete(key ds.Key) error {
 	return d.DB.Delete(key.Bytes())
 }
 
@@ -83,6 +81,8 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	it.Rewind()
 
 	it.Seek([]byte(q.Prefix))
+
+	var closer sync.Once
 
 	return dsq.ResultsFromIterator(q, dsq.Iterator{
 		Next: func() (dsq.Result, bool) {
@@ -107,7 +107,9 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 			return dsq.Result{Entry: e}, true
 		},
 		Close: func() error {
-			it.Close()
+			closer.Do(func() {
+				it.Close()
+			})
 			return nil
 		},
 	}), nil
@@ -170,7 +172,7 @@ func (d *datastore) runQuery(worker goprocess.Process, qrb *dsq.ResultBuilder) {
 	}
 }
 
-func (d *datastore) Close() (err error) {
+func (d *datastore) Close() error {
 	return d.DB.Close()
 }
 

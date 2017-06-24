@@ -1,16 +1,16 @@
 package badger
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
+	"sort"
 	"testing"
 
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	"bytes"
-	"sort"
-	"fmt"
-	"math/rand"
 )
 
 var testcases = map[string]string{
@@ -53,7 +53,7 @@ func addTestCases(t *testing.T, d *datastore, testcases map[string]string) {
 		}
 	}
 
-	err := d.Put(ds.NewKey("/foo"),  nil)
+	err := d.Put(ds.NewKey("/foo"), nil)
 	if err != ds.ErrInvalidType {
 		t.Error("Expected err to be ds.ErrInvalidType")
 		if err != nil {
@@ -221,7 +221,7 @@ func TestBatching(t *testing.T) {
 		}
 	}
 
-	err = b.Put(ds.NewKey("/foo"),  nil)
+	err = b.Put(ds.NewKey("/foo"), nil)
 	if err != ds.ErrInvalidType {
 		t.Error("Expected err to be ds.ErrInvalidType")
 		if err != nil {
@@ -280,7 +280,6 @@ func TestBatching(t *testing.T) {
 		"/e",
 		"/f",
 	}, rs)
-
 
 }
 
@@ -454,4 +453,3 @@ func TestManyKeysAndQuery(t *testing.T) {
 		}
 	}
 }
-
