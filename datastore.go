@@ -3,7 +3,6 @@ package badger
 import (
 	"bytes"
 	"sync"
-	"time"
 
 	badger "github.com/dgraph-io/badger/badger"
 

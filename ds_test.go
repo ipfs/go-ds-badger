@@ -35,7 +35,7 @@ func newDS(t *testing.T) (*datastore, func()) {
 		t.Fatal(err)
 	}
 
-	d, err := NewDatastore(path)
+	d, err := NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
