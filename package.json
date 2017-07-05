@@ -21,15 +21,15 @@
     },
     {
       "author": "dgraph-io",
-      "hash": "QmVTNgXUoXkKu9qWZXNKES6ePKpdQkrS8Cpj8qNM1Xvc8N",
+      "hash": "QmNPhQW9KgeoLmbMJgMMV1en67YhMPo3QCd5q8oKMgXYX4",
       "name": "badger",
-      "version": "1.0.2"
+      "version": "1.1.0"
     }
   ],
   "gxVersion": "0.8.0",
   "language": "go",
   "license": "",
   "name": "go-ds-badger",
-  "version": "0.1.5"
+  "version": "0.1.6"
 }
 
