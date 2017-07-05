@@ -30,6 +30,7 @@
   "language": "go",
   "license": "",
   "name": "go-ds-badger",
-  "version": "0.1.7"
+  "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
+  "version": "0.1.8"
 }
 
