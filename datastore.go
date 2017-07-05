@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	badger "github.com/dgraph-io/badger/badger"
+	badger "github.com/gxed/badger"
 
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
