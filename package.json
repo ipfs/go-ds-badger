@@ -30,6 +30,6 @@
   "language": "go",
   "license": "",
   "name": "go-ds-badger",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }
 
