@@ -38,7 +38,7 @@ func (d *datastore) Put(key ds.Key, value interface{}) error {
 		return ds.ErrInvalidType
 	}
 
-	return d.DB.Set(key.Bytes(), val)
+	return d.DB.Set(key.Bytes(), val, 0)
 }
 
 func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
