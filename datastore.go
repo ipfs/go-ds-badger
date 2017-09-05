@@ -14,14 +14,27 @@ type datastore struct {
 	DB *badger.KV
 }
 
-func NewDatastore(path string, opt *badger.Options) (*datastore, error) {
-	if opt == nil {
-		opt = &badger.DefaultOptions
+// Options are the badger datastore options, reexported here for convenience.
+type Options badger.Options
+
+var DefaultOptions Options = Options(badger.DefaultOptions)
+
+// NewDatastore creates a new badger datastore.
+//
+// DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
+func NewDatastore(path string, options *Options) (*datastore, error) {
+	// Copy the options because we modify them.
+	var opt badger.Options
+	if options == nil {
+		opt = badger.DefaultOptions
+	} else {
+		opt = badger.Options(*options)
 	}
+
 	opt.Dir = path
 	opt.ValueDir = path
 
-	kv, err := badger.NewKV(opt)
+	kv, err := badger.NewKV(&opt)
 	if err != nil {
 		return nil, err
 	}
