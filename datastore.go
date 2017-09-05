@@ -20,7 +20,6 @@ func NewDatastore(path string, opt *badger.Options) (*datastore, error) {
 	}
 	opt.Dir = path
 	opt.ValueDir = path
-	// opt.SyncWrites = true // default is false.
 
 	kv, err := badger.NewKV(opt)
 	if err != nil {
