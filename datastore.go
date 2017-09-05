@@ -73,6 +73,7 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 		return d.QueryOrig(q)
 	}
 
+	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.FetchValues = !q.KeysOnly
 	it := d.DB.NewIterator(opt)
@@ -82,7 +83,7 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 
 	return dsq.ResultsFromIterator(q, dsq.Iterator{
 		Next: func() (dsq.Result, bool) {
-			if !it.ValidForPrefix(q.Prefix) {
+			if !it.ValidForPrefix(prefix) {
 				return dsq.Result{}, false
 			}
 			item := it.Item()
