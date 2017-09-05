@@ -1,7 +1,6 @@
 package badger
 
 import (
-	"bytes"
 	"sync"
 
 	badger "github.com/dgraph-io/badger"
@@ -21,6 +20,7 @@ func NewDatastore(path string, opt *badger.Options) (*datastore, error) {
 	}
 	opt.Dir = path
 	opt.ValueDir = path
+	// opt.SyncWrites = true // default is false.
 
 	kv, err := badger.NewKV(opt)
 	if err != nil {
@@ -77,24 +77,18 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.FetchValues = !q.KeysOnly
 	it := d.DB.NewIterator(opt)
-	it.Rewind()
-
 	it.Seek([]byte(q.Prefix))
 
 	var closer sync.Once
 
 	return dsq.ResultsFromIterator(q, dsq.Iterator{
 		Next: func() (dsq.Result, bool) {
-			if !it.Valid() {
+			if !it.ValidForPrefix(q.Prefix) {
 				return dsq.Result{}, false
 			}
 			item := it.Item()
 			k := string(item.Key())
 			e := dsq.Entry{Key: k}
-
-			if !bytes.HasPrefix(item.Key(), []byte(q.Prefix)) {
-				return dsq.Result{}, false
-			}
 
 			if !q.KeysOnly {
 				buf := make([]byte, len(item.Value()))
