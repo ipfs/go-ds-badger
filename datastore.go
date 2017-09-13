@@ -1,12 +1,11 @@
 package badger
 
 import (
-	badger "gx/ipfs/QmaFCvHjbALFp3Vn33BNPAu7kELY5aesDhCHig3BzgBW2U/badger"
+	badger "github.com/dgraph-io/badger"
 
-	goprocess "gx/ipfs/QmSF8fPo3jgVBAy8fpdjjYqgG87dkJgUprRBHRd2tmfgpP/goprocess"
-	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
-	dsq "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore/query"
-	"fmt"
+	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
+	goprocess "github.com/jbenet/goprocess"
 )
 
 type datastore struct {
@@ -59,14 +58,16 @@ func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
 		return nil, err
 	}
 
-	resCh := make(chan []byte)
+	var bytes []byte
 
-	go item.Value(func(bytes []byte) error {
-		resCh <- bytes //TODO: Bytes shouldn't be modified, should we copy() them?
+	err = item.Value(func(b []byte) error {
+		bytes = b //TODO: Bytes shouldn't be modified, should we copy() them?
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	bytes := <-resCh
 	if bytes == nil {
 		has, err := d.Has(key)
 		if err != nil {
@@ -109,11 +110,9 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	qrb := dsq.NewResultBuilder(q)
 
 	qrb.Process.Go(func(worker goprocess.Process) {
-		resultCh := make(chan dsq.Result)
 		defer it.Close()
 
 		for sent := 0; it.ValidForPrefix(prefix); sent++ {
-			fmt.Println(sent)
 			if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
 				break
 			}
@@ -123,29 +122,15 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 			k := string(item.Key())
 			e := dsq.Entry{Key: k}
 
-			if q.KeysOnly {
-				select {
-				case qrb.Output <- dsq.Result{Entry: e}:
-				case <-worker.Closing(): // client told us to close early
-					return
-				}
-				it.Next()
-				continue
+			if !q.KeysOnly {
+				item.Value(func(bytes []byte) error {
+					e.Value = bytes
+					return nil
+				})
 			}
 
-			go item.Value(func(bytes []byte) error {
-				e.Value = bytes
-				resultCh <- dsq.Result{Entry: e}
-				return nil
-			})
-
 			select {
-			case res := <-resultCh:
-				select {
-				case qrb.Output <- res:
-				case <-worker.Closing(): // client told us to close early
-					return
-				}
+			case qrb.Output <- dsq.Result{Entry: e}:
 			case <-worker.Closing(): // client told us to close early
 				return
 			}

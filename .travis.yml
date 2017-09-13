@@ -9,6 +9,7 @@ install:
   - go get github.com/whyrusleeping/gx
   - go get github.com/whyrusleeping/gx-go
   - gx install --global
+  - go get -t ./...
 script:
   - gx test -v -race -coverprofile=coverage.txt -covermode=atomic .
   
