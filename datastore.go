@@ -1,13 +1,12 @@
 package badger
 
 import (
-	"sync"
+	badger "gx/ipfs/QmaFCvHjbALFp3Vn33BNPAu7kELY5aesDhCHig3BzgBW2U/badger"
 
-	badger "github.com/dgraph-io/badger"
-
-	ds "github.com/ipfs/go-datastore"
-	dsq "github.com/ipfs/go-datastore/query"
-	goprocess "github.com/jbenet/goprocess"
+	goprocess "gx/ipfs/QmSF8fPo3jgVBAy8fpdjjYqgG87dkJgUprRBHRd2tmfgpP/goprocess"
+	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
+	dsq "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore/query"
+	"fmt"
 )
 
 type datastore struct {
@@ -59,10 +58,27 @@ func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if item.Value() == nil {
+
+	resCh := make(chan []byte)
+
+	go item.Value(func(bytes []byte) error {
+		resCh <- bytes //TODO: Bytes shouldn't be modified, should we copy() them?
+		return nil
+	})
+
+	bytes := <-resCh
+	if bytes == nil {
+		has, err := d.Has(key)
+		if err != nil {
+			return nil, err
+		}
+		if has {
+			return []byte{}, nil
+		}
+
 		return nil, ds.ErrNotFound
 	}
-	return item.Value(), nil
+	return bytes, nil
 }
 
 func (d *datastore) Has(key ds.Key) (bool, error) {
@@ -79,55 +95,66 @@ func (d *datastore) Query(q dsq.Query) (dsq.Results, error) {
 }
 
 func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
-	if len(q.Filters) > 0 ||
-		len(q.Orders) > 0 ||
-		q.Limit > 0 ||
-		q.Offset > 0 {
-		return d.QueryOrig(q)
-	}
-
 	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
-	opt.FetchValues = !q.KeysOnly
+	opt.PrefetchValues = !q.KeysOnly
 	it := d.DB.NewIterator(opt)
 	it.Seek([]byte(q.Prefix))
+	if q.Offset > 0 {
+		for j := 0; j < q.Offset; j++ {
+			it.Next()
+		}
+	}
 
-	var closer sync.Once
+	qrb := dsq.NewResultBuilder(q)
 
-	return dsq.ResultsFromIterator(q, dsq.Iterator{
-		Next: func() (dsq.Result, bool) {
-			if !it.ValidForPrefix(prefix) {
-				return dsq.Result{}, false
+	qrb.Process.Go(func(worker goprocess.Process) {
+		resultCh := make(chan dsq.Result)
+		defer it.Close()
+
+		for sent := 0; it.ValidForPrefix(prefix); sent++ {
+			fmt.Println(sent)
+			if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
+				break
 			}
+
 			item := it.Item()
+
 			k := string(item.Key())
 			e := dsq.Entry{Key: k}
 
-			if !q.KeysOnly {
-				buf := make([]byte, len(item.Value()))
-				copy(buf, item.Value())
-				e.Value = buf
+			if q.KeysOnly {
+				select {
+				case qrb.Output <- dsq.Result{Entry: e}:
+				case <-worker.Closing(): // client told us to close early
+					return
+				}
+				it.Next()
+				continue
 			}
 
-			it.Next()
-			return dsq.Result{Entry: e}, true
-		},
-		Close: func() error {
-			closer.Do(func() {
-				it.Close()
+			go item.Value(func(bytes []byte) error {
+				e.Value = bytes
+				resultCh <- dsq.Result{Entry: e}
+				return nil
 			})
-			return nil
-		},
-	}), nil
-}
 
-func (d *datastore) QueryOrig(q dsq.Query) (dsq.Results, error) {
-	qrb := dsq.NewResultBuilder(q)
-	qrb.Process.Go(func(worker goprocess.Process) {
-		d.runQuery(worker, qrb)
+			select {
+			case res := <-resultCh:
+				select {
+				case qrb.Output <- res:
+				case <-worker.Closing(): // client told us to close early
+					return
+				}
+			case <-worker.Closing(): // client told us to close early
+				return
+			}
+			it.Next()
+		}
+
+		return
 	})
 
-	// go wait on the worker (without signaling close)
 	go qrb.Process.CloseAfterChildren()
 
 	// Now, apply remaining things (filters, order)
@@ -138,44 +165,8 @@ func (d *datastore) QueryOrig(q dsq.Query) (dsq.Results, error) {
 	for _, o := range q.Orders {
 		qr = dsq.NaiveOrder(qr, o)
 	}
+
 	return qr, nil
-}
-
-func (d *datastore) runQuery(worker goprocess.Process, qrb *dsq.ResultBuilder) {
-	opt := badger.DefaultIteratorOptions
-	opt.FetchValues = !qrb.Query.KeysOnly
-	it := d.DB.NewIterator(opt)
-	defer it.Close()
-
-	it.Rewind()
-	it.Seek([]byte(qrb.Query.Prefix))
-	if qrb.Query.Offset > 0 {
-		for j := 0; j < qrb.Query.Offset; j++ {
-			it.Next()
-		}
-	}
-
-	for sent := 0; it.Valid(); sent++ {
-		if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
-			break
-		}
-
-		k := string(it.Item().Key())
-		e := dsq.Entry{Key: k}
-
-		if !qrb.Query.KeysOnly {
-			buf := make([]byte, len(it.Item().Value()))
-			copy(buf, it.Item().Value())
-			e.Value = buf
-		}
-
-		select {
-		case qrb.Output <- dsq.Result{Entry: e}: // we sent it out
-		case <-worker.Closing(): // client told us to end early.
-			break
-		}
-		it.Next()
-	}
 }
 
 func (d *datastore) Close() error {
