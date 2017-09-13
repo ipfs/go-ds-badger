@@ -57,11 +57,13 @@ func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var bytes []byte
 
 	err = item.Value(func(b []byte) error {
-		bytes = b //TODO: Bytes shouldn't be modified, should we copy() them?
+		if b != nil {
+			bytes = make([]byte, len(b))
+			copy(bytes, b)
+		}
 		return nil
 	})
 	if err != nil {
@@ -123,8 +125,12 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 			e := dsq.Entry{Key: k}
 
 			if !q.KeysOnly {
-				item.Value(func(bytes []byte) error {
-					e.Value = bytes
+				item.Value(func(b []byte) error {
+					if b != nil {
+						bytes := make([]byte, len(b))
+						copy(bytes, b)
+						e.Value = bytes
+					}
 					return nil
 				})
 			}
