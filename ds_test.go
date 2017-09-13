@@ -22,6 +22,7 @@ var testcases = map[string]string{
 	"/a/d":   "ad",
 	"/e":     "e",
 	"/f":     "f",
+	"/g":     "",
 }
 
 // returns datastore, and a function to call on exit.
@@ -183,6 +184,25 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestGetEmpty(t *testing.T) {
+	d, done := newDS(t)
+	defer done()
+
+	err := d.Put(ds.NewKey("/a"), []byte{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	v, err := d.Get(ds.NewKey("/a"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(v.([]byte)) != 0 {
+		t.Error("expected 0 len []byte form get")
+	}
+}
+
 func expectMatches(t *testing.T, expect []string, actualR dsq.Results) {
 	actual, err := actualR.Rest()
 	if err != nil {
@@ -279,6 +299,7 @@ func TestBatching(t *testing.T) {
 		"/a/d",
 		"/e",
 		"/f",
+		"/g",
 	}, rs)
 
 }
