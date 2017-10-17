@@ -207,14 +207,22 @@ func (b *badgerBatch) Put(key ds.Key, value interface{}) error {
 		return ds.ErrInvalidType
 	}
 
-	return b.txn.Set(key.Bytes(), val, 0)
+	err := b.txn.Set(key.Bytes(), val, 0)
+	if err != nil {
+		b.txn.Discard()
+	}
+	return err
+}
+
+func (b *badgerBatch) Delete(key ds.Key) error {
+	err := b.txn.Delete(key.Bytes())
+	if err != nil {
+		b.txn.Discard()
+	}
+	return err
 }
 
 func (b *badgerBatch) Commit() error {
 	//TODO: Setting callback may potentially make this faster
 	return b.txn.Commit(nil)
-}
-
-func (b *badgerBatch) Delete(key ds.Key) error {
-	return b.txn.Delete(key.Bytes())
 }
