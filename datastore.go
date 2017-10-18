@@ -118,7 +118,6 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	opt.PrefetchValues = !q.KeysOnly
 
 	txn := d.DB.NewTransaction(false)
-	defer txn.Discard()
 
 	it := txn.NewIterator(opt)
 	it.Seek([]byte(q.Prefix))
@@ -131,6 +130,7 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	qrb := dsq.NewResultBuilder(q)
 
 	qrb.Process.Go(func(worker goprocess.Process) {
+		defer txn.Discard()
 		defer it.Close()
 
 		for sent := 0; it.ValidForPrefix(prefix); sent++ {
