@@ -21,9 +21,9 @@
     },
     {
       "author": "dgraph-io",
-      "hash": "QmTBxwy8cerzXbZQFUwTBCSxx55jUgVzudFcpmnAHUGuPy",
+      "hash": "QmWjtyUi7XPHMnUVBJLz9vWqKqZ7zCzni3jBwxMwb3zBVq",
       "name": "badger",
-      "version": "1.4.0"
+      "version": "2.0.2"
     }
   ],
   "gxVersion": "0.8.0",
@@ -31,6 +31,6 @@
   "license": "",
   "name": "go-ds-badger",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.4.1"
+  "version": "1.0.3"
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 type datastore struct {
-	DB *badger.KV
+	DB *badger.DB
 }
 
 // Options are the badger datastore options, reexported here for convenience.
@@ -32,7 +32,7 @@ func NewDatastore(path string, options *Options) (*datastore, error) {
 	opt.Dir = path
 	opt.ValueDir = path
 
-	kv, err := badger.NewKV(&opt)
+	kv, err := badger.Open(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -48,49 +48,64 @@ func (d *datastore) Put(key ds.Key, value interface{}) error {
 		return ds.ErrInvalidType
 	}
 
-	return d.DB.Set(key.Bytes(), val, 0)
+	txn := d.DB.NewTransaction(true)
+	defer txn.Discard()
+
+	err := txn.Set(key.Bytes(), val, 0)
+	if err != nil {
+		return err
+	}
+
+	//TODO: Setting callback may potentially make this faster
+	return txn.Commit(nil)
 }
 
 func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
-	var item badger.KVItem
-	err = d.DB.Get(key.Bytes(), &item)
-	if err != nil {
-		return nil, err
-	}
-	var bytes []byte
+	txn := d.DB.NewTransaction(false)
+	defer txn.Discard()
 
-	err = item.Value(func(b []byte) error {
-		if b != nil {
-			bytes = make([]byte, len(b))
-			copy(bytes, b)
-		}
-		return nil
-	})
+	item, err := txn.Get(key.Bytes())
+	if err == badger.ErrKeyNotFound {
+		err = ds.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if bytes == nil {
-		has, err := d.Has(key)
-		if err != nil {
-			return nil, err
-		}
-		if has {
-			return []byte{}, nil
-		}
-
-		return nil, ds.ErrNotFound
+	val, err := item.Value()
+	if err != nil {
+		return nil, err
 	}
-	return bytes, nil
+
+	out := make([]byte, len(val))
+	copy(out, val)
+	return out, nil
 }
 
 func (d *datastore) Has(key ds.Key) (bool, error) {
-	return d.DB.Exists(key.Bytes())
+	txn := d.DB.NewTransaction(false)
+	defer txn.Discard()
+	_, err := txn.Get(key.Bytes())
+	if err == badger.ErrKeyNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
 
+	return true, nil
 }
 
 func (d *datastore) Delete(key ds.Key) error {
-	return d.DB.Delete(key.Bytes())
+	txn := d.DB.NewTransaction(true)
+	defer txn.Discard()
+	err := txn.Delete(key.Bytes())
+	if err != nil {
+		return err
+	}
+
+	//TODO: callback may potentially make this faster
+	return txn.Commit(nil)
 }
 
 func (d *datastore) Query(q dsq.Query) (dsq.Results, error) {
@@ -101,7 +116,10 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
-	it := d.DB.NewIterator(opt)
+
+	txn := d.DB.NewTransaction(false)
+
+	it := txn.NewIterator(opt)
 	it.Seek([]byte(q.Prefix))
 	if q.Offset > 0 {
 		for j := 0; j < q.Offset; j++ {
@@ -112,6 +130,7 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	qrb := dsq.NewResultBuilder(q)
 
 	qrb.Process.Go(func(worker goprocess.Process) {
+		defer txn.Discard()
 		defer it.Close()
 
 		for sent := 0; it.ValidForPrefix(prefix); sent++ {
@@ -124,19 +143,23 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 			k := string(item.Key())
 			e := dsq.Entry{Key: k}
 
+			var result dsq.Result
 			if !q.KeysOnly {
-				item.Value(func(b []byte) error {
-					if b != nil {
-						bytes := make([]byte, len(b))
-						copy(bytes, b)
-						e.Value = bytes
-					}
-					return nil
-				})
+				b, err := item.Value()
+				if err != nil {
+					result = dsq.Result{Error: err}
+				} else {
+					bytes := make([]byte, len(b))
+					copy(bytes, b)
+					e.Value = bytes
+					result = dsq.Result{Entry: e}
+				}
+			} else {
+				result = dsq.Result{Entry: e}
 			}
 
 			select {
-			case qrb.Output <- dsq.Result{Entry: e}:
+			case qrb.Output <- result:
 			case <-worker.Closing(): // client told us to close early
 				return
 			}
@@ -167,13 +190,14 @@ func (d *datastore) Close() error {
 func (d *datastore) IsThreadSafe() {}
 
 type badgerBatch struct {
-	entries []*badger.Entry
-	db      *badger.KV
+	db  *badger.DB
+	txn *badger.Txn
 }
 
 func (d *datastore) Batch() (ds.Batch, error) {
 	return &badgerBatch{
-		db: d.DB,
+		db:  d.DB,
+		txn: d.DB.NewTransaction(true),
 	}, nil
 }
 
@@ -183,15 +207,22 @@ func (b *badgerBatch) Put(key ds.Key, value interface{}) error {
 		return ds.ErrInvalidType
 	}
 
-	b.entries = badger.EntriesSet(b.entries, key.Bytes(), val)
-	return nil
-}
-
-func (b *badgerBatch) Commit() error {
-	return b.db.BatchSet(b.entries)
+	err := b.txn.Set(key.Bytes(), val, 0)
+	if err != nil {
+		b.txn.Discard()
+	}
+	return err
 }
 
 func (b *badgerBatch) Delete(key ds.Key) error {
-	b.entries = badger.EntriesDelete(b.entries, key.Bytes())
-	return nil
+	err := b.txn.Delete(key.Bytes())
+	if err != nil {
+		b.txn.Discard()
+	}
+	return err
+}
+
+func (b *badgerBatch) Commit() error {
+	//TODO: Setting callback may potentially make this faster
+	return b.txn.Commit(nil)
 }
