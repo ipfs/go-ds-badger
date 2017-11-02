@@ -51,7 +51,7 @@ func (d *datastore) Put(key ds.Key, value interface{}) error {
 	txn := d.DB.NewTransaction(true)
 	defer txn.Discard()
 
-	err := txn.Set(key.Bytes(), val, 0)
+	err := txn.Set(key.Bytes(), val)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (b *badgerBatch) Put(key ds.Key, value interface{}) error {
 		return ds.ErrInvalidType
 	}
 
-	err := b.txn.Set(key.Bytes(), val, 0)
+	err := b.txn.Set(key.Bytes(), val)
 	if err != nil {
 		b.txn.Discard()
 	}
