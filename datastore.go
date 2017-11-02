@@ -1,11 +1,11 @@
 package badger
 
 import (
-	badger "gx/ipfs/Qmf4P9Vx2eirJ6TPD38tRniobiNGUu5eqnMGB7fDjNpSMP/badger"
+	badger "github.com/dgraph-io/badger"
 
-	goprocess "gx/ipfs/QmSF8fPo3jgVBAy8fpdjjYqgG87dkJgUprRBHRd2tmfgpP/goprocess"
-	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
-	dsq "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore/query"
+	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
+	goprocess "github.com/jbenet/goprocess"
 )
 
 type datastore struct {
