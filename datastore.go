@@ -36,10 +36,10 @@ func NewDatastore(path string, options *Options) (*datastore, error) {
 	opt.ValueDir = path
 
 	kv, err := badger.Open(opt)
-	if strings.HasPrefix(err.Error(), "manifest has unsupported version:") {
-		err = fmt.Errorf("unsupported badger version, use github.com/ipfs/badgerds-upgrade to upgrade: %s", err.Error())
-	}
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "manifest has unsupported version:") {
+			err = fmt.Errorf("unsupported badger version, use github.com/ipfs/badgerds-upgrade to upgrade: %s", err.Error())
+		}
 		return nil, err
 	}
 
