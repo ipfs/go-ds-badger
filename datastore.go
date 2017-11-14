@@ -13,12 +13,22 @@ import (
 
 type datastore struct {
 	DB *badger.DB
+
+	gcDiscardRatio float64
 }
 
 // Options are the badger datastore options, reexported here for convenience.
-type Options badger.Options
+type Options struct {
+	gcDiscardRatio float64
 
-var DefaultOptions Options = Options(badger.DefaultOptions)
+	badger.Options
+}
+
+var DefaultOptions = Options{
+	gcDiscardRatio: 0.3,
+
+	Options: badger.DefaultOptions,
+}
 
 // NewDatastore creates a new badger datastore.
 //
@@ -26,10 +36,13 @@ var DefaultOptions Options = Options(badger.DefaultOptions)
 func NewDatastore(path string, options *Options) (*datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
+	var gcDiscardRatio float64
 	if options == nil {
 		opt = badger.DefaultOptions
+		gcDiscardRatio = DefaultOptions.gcDiscardRatio
 	} else {
-		opt = badger.Options(*options)
+		opt = options.Options
+		gcDiscardRatio = options.gcDiscardRatio
 	}
 
 	opt.Dir = path
@@ -45,6 +58,8 @@ func NewDatastore(path string, options *Options) (*datastore, error) {
 
 	return &datastore{
 		DB: kv,
+
+		gcDiscardRatio: gcDiscardRatio,
 	}, nil
 }
 
@@ -231,4 +246,12 @@ func (b *badgerBatch) Delete(key ds.Key) error {
 func (b *badgerBatch) Commit() error {
 	//TODO: Setting callback may potentially make this faster
 	return b.txn.Commit(nil)
+}
+
+func (d *datastore) CollectGarbage() error {
+	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
+	if err == badger.ErrNoRewrite {
+		err = nil
+	}
+	return err
 }

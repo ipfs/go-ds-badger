@@ -474,3 +474,26 @@ func TestManyKeysAndQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestGC(t *testing.T) {
+	d, done := newDS(t)
+	defer done()
+
+	count := 10000
+
+	t.Logf("putting %d values", count)
+	for i := 0; i < count; i++ {
+		buf := make([]byte, 6400)
+		rand.Read(buf)
+		d.Put(ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
+	}
+
+	t.Logf("deleting %d values", count)
+	for i := 0; i < count; i++ {
+		d.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
+	}
+
+	if err := d.CollectGarbage(); err != nil {
+		t.Fatal(err)
+	}
+}
