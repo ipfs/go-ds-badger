@@ -25,7 +25,7 @@ type Options struct {
 }
 
 var DefaultOptions = Options{
-	gcDiscardRatio: 0.3,
+	gcDiscardRatio: 0.1,
 
 	Options: badger.DefaultOptions,
 }
@@ -250,8 +250,8 @@ func (b *badgerBatch) Commit() error {
 
 func (d *datastore) CollectGarbage() error {
 	err := d.DB.PurgeOlderVersions()
-	if err == badger.ErrNoRewrite {
-		err = nil
+	if err != nil {
+		return err
 	}
 
 	err = d.DB.RunValueLogGC(d.gcDiscardRatio)
