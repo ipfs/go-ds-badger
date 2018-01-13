@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	badger "github.com/dgraph-io/badger"
+	badger "gx/ipfs/QmPbiodTRsPuxu472jdRzVvXwbwZCZojrL2UGWEz4eyQsV/badger"
 
-	ds "github.com/ipfs/go-datastore"
-	dsq "github.com/ipfs/go-datastore/query"
-	goprocess "github.com/jbenet/goprocess"
+	goprocess "gx/ipfs/QmSF8fPo3jgVBAy8fpdjjYqgG87dkJgUprRBHRd2tmfgpP/goprocess"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
+	dsq "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/query"
 )
 
 type datastore struct {
@@ -249,7 +249,12 @@ func (b *badgerBatch) Commit() error {
 }
 
 func (d *datastore) CollectGarbage() error {
-	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
+	err := d.DB.PurgeOlderVersions()
+	if err == badger.ErrNoRewrite {
+		err = nil
+	}
+
+	err = d.DB.RunValueLogGC(d.gcDiscardRatio)
 	if err == badger.ErrNoRewrite {
 		err = nil
 	}
