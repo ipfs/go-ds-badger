@@ -15,9 +15,9 @@
     },
     {
       "author": "jbenet",
-      "hash": "QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5",
+      "hash": "QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg",
       "name": "go-datastore",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     {
       "author": "dgraph-io",
@@ -31,6 +31,6 @@
   "license": "",
   "name": "go-ds-badger",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.4.1"
+  "version": "1.4.2"
 }
 

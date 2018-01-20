@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	badger "gx/ipfs/QmPbiodTRsPuxu472jdRzVvXwbwZCZojrL2UGWEz4eyQsV/badger"
+	badger "github.com/dgraph-io/badger"
 
-	goprocess "gx/ipfs/QmSF8fPo3jgVBAy8fpdjjYqgG87dkJgUprRBHRd2tmfgpP/goprocess"
+	goprocess "github.com/jbenet/goprocess"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dsq "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/query"
 )
