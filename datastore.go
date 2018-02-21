@@ -204,6 +204,13 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	return qr, nil
 }
 
+// DiskUsage implements the PersistentDatastore interface.
+// It returns the sum of lsm and value log files sizes in bytes.
+func (d *datastore) DiskUsage() (uint64, error) {
+	lsm, vlog := d.DB.Size()
+	return uint64(lsm + vlog), nil
+}
+
 func (d *datastore) Close() error {
 	return d.DB.Close()
 }

@@ -31,7 +31,7 @@ var testcases = map[string]string{
 //  d, close := newDS(t)
 //  defer close()
 func newDS(t *testing.T) (*datastore, func()) {
-	path, err := ioutil.TempDir("/tmp", "testing_leveldb_")
+	path, err := ioutil.TempDir("/tmp", "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,4 +496,28 @@ func TestGC(t *testing.T) {
 	if err := d.CollectGarbage(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// TestDiskUsage verifies we fetch some badger size correctly.
+// Because the Size metric is only updated every minute in badger and
+// this interval is not configurable, we re-open the database
+// (the size is always calculated on Open) to make things quick.
+func TestDiskUsage(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addTestCases(t, d, testcases)
+	d.Close()
+
+	d, err = NewDatastore("/tmp/testing_badger_du", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, _ := d.DiskUsage()
+	if s <= 0 {
+		t.Error("expected some size")
+	}
+	d.Close()
 }
