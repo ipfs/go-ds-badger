@@ -24,6 +24,12 @@
       "hash": "QmUkYC4JT54xVUW83oJMrPw9SLnrRQ1UUvPySdt3uEz4uy",
       "name": "badger",
       "version": "2.7.0"
+    },
+    {
+      "author": "Kubuxu",
+      "hash": "QmXuBJ7DR6k3rmUEKtvVMhwjmXDuJgXXPUt4LQXKBMsU93",
+      "name": "go-os-helper",
+      "version": "0.0.0"
     }
   ],
   "gxVersion": "0.8.0",
