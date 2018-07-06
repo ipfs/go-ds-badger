@@ -256,12 +256,7 @@ func (b *badgerBatch) Commit() error {
 }
 
 func (d *datastore) CollectGarbage() error {
-	err := d.DB.PurgeOlderVersions()
-	if err != nil {
-		return err
-	}
-
-	err = d.DB.RunValueLogGC(d.gcDiscardRatio)
+	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
 	if err == badger.ErrNoRewrite {
 		err = nil
 	}
