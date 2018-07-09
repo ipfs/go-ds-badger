@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
 
 	ds "github.com/ipfs/go-datastore"
@@ -43,6 +44,10 @@ func NewDatastore(path string, options *Options) (*datastore, error) {
 	} else {
 		opt = options.Options
 		gcDiscardRatio = options.gcDiscardRatio
+	}
+
+	if osh.IsWindows() && opt.SyncWrites {
+		opt.Truncate = true
 	}
 
 	opt.Dir = path
