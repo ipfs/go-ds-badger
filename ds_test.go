@@ -481,16 +481,42 @@ func TestGC(t *testing.T) {
 
 	count := 10000
 
+	b, err := d.Batch()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Logf("putting %d values", count)
 	for i := 0; i < count; i++ {
 		buf := make([]byte, 6400)
 		rand.Read(buf)
-		d.Put(ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
+		err = b.Put(ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = b.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err = d.Batch()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	t.Logf("deleting %d values", count)
 	for i := 0; i < count; i++ {
-		d.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
+		b.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = b.Commit()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	if err := d.CollectGarbage(); err != nil {
