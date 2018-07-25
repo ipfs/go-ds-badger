@@ -3,6 +3,7 @@ package badger
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
@@ -84,8 +85,29 @@ func (d *Datastore) Put(key ds.Key, value interface{}) error {
 		return err
 	}
 
-	txn.Commit()
-	return nil
+	return txn.Commit()
+}
+
+func (d *datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
+	txn := d.NewTransaction(false).(*txn)
+	defer txn.Rollback()
+
+	if err := txn.PutWithTTL(key, value, ttl); err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func (d *datastore) SetTTL(key ds.Key, ttl time.Duration) error {
+	txn := d.NewTransaction(false).(*txn)
+	defer txn.Rollback()
+
+	if err := txn.SetTTL(key, ttl); err != nil {
+		return err
+	}
+
+	return txn.Commit()
 }
 
 func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
@@ -153,6 +175,24 @@ func (t *txn) Put(key ds.Key, value interface{}) error {
 	}
 
 	return t.txn.Set(key.Bytes(), bytes)
+}
+
+func (t *txn) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return ds.ErrInvalidType
+	}
+
+	return t.txn.SetWithTTL(key.Bytes(), bytes, ttl)
+}
+
+func (t *txn) SetTTL(key ds.Key, ttl time.Duration) error {
+	data, err := t.Get(key)
+	if err != nil {
+		return err
+	}
+
+	return t.PutWithTTL(key, data, ttl)
 }
 
 func (t *txn) Get(key ds.Key) (interface{}, error) {
