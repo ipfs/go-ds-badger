@@ -18,6 +18,10 @@ type Datastore struct {
 	gcDiscardRatio float64
 }
 
+type txn struct {
+	txn *badger.Txn
+}
+
 // Options are the badger datastore options, reexported here for convenience.
 type Options struct {
 	gcDiscardRatio float64
@@ -68,24 +72,91 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	}, nil
 }
 
-func (d *Datastore) Put(key ds.Key, value []byte) error {
-	txn := d.DB.NewTransaction(true)
-	defer txn.Discard()
+func (d *Datastore) NewTransaction(readOnly bool) ds.Txn {
+	return &txn{d.DB.NewTransaction(!readOnly)}
+}
 
-	err := txn.Set(key.Bytes(), value)
+func (d *Datastore) Put(key ds.Key, value interface{}) error {
+	txn := d.NewTransaction(false)
+	defer txn.Rollback()
+
+	if err := txn.Put(key, value); err != nil {
+		return err
+	}
+
+	txn.Commit()
+	return nil
+}
+
+func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
+	txn := d.NewTransaction(true)
+	defer txn.Rollback()
+
+	return txn.Get(key)
+}
+
+func (d *Datastore) Has(key ds.Key) (bool, error) {
+	txn := d.NewTransaction(true)
+	defer txn.Rollback()
+
+	return txn.Has(key)
+}
+
+func (d *Datastore) Delete(key ds.Key) error {
+	txn := d.NewTransaction(false)
+	defer txn.Rollback()
+
+	err := txn.Delete(key)
 	if err != nil {
 		return err
 	}
 
-	//TODO: Setting callback may potentially make this faster
-	return txn.Commit(nil)
+	return txn.Commit()
 }
 
-func (d *Datastore) Get(key ds.Key) (value []byte, err error) {
-	txn := d.DB.NewTransaction(false)
-	defer txn.Discard()
+func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
+	txn := d.NewTransaction(true)
+	defer txn.Rollback()
 
-	item, err := txn.Get(key.Bytes())
+	return txn.Query(q)
+}
+
+// DiskUsage implements the PersistentDatastore interface.
+// It returns the sum of lsm and value log files sizes in bytes.
+func (d *Datastore) DiskUsage() (uint64, error) {
+	lsm, vlog := d.DB.Size()
+	return uint64(lsm + vlog), nil
+}
+
+func (d *Datastore) Close() error {
+	return d.DB.Close()
+}
+
+func (d *Datastore) IsThreadSafe() {}
+
+func (d *Datastore) Batch() (ds.Batch, error) {
+	return d.NewTransaction(false), nil
+}
+
+func (d *Datastore) CollectGarbage() error {
+	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
+	if err == badger.ErrNoRewrite {
+		err = nil
+	}
+	return err
+}
+
+func (t *txn) Put(key ds.Key, value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return ds.ErrInvalidType
+	}
+
+	return t.txn.Set(key.Bytes(), bytes)
+}
+
+func (t *txn) Get(key ds.Key) (interface{}, error) {
+	item, err := t.txn.Get(key.Bytes())
 	if err == badger.ErrKeyNotFound {
 		err = ds.ErrNotFound
 	}
@@ -103,42 +174,28 @@ func (d *Datastore) Get(key ds.Key) (value []byte, err error) {
 	return out, nil
 }
 
-func (d *Datastore) Has(key ds.Key) (bool, error) {
-	txn := d.DB.NewTransaction(false)
-	defer txn.Discard()
-	_, err := txn.Get(key.Bytes())
-	if err == badger.ErrKeyNotFound {
+func (t *txn) Has(key ds.Key) (bool, error) {
+	_, err := t.txn.Get(key.Bytes())
+
+	if err == nil {
+		return true, nil
+	} else if err == badger.ErrKeyNotFound {
 		return false, nil
 	}
-	if err != nil {
-		return false, err
-	}
 
-	return true, nil
+	return false, err
 }
 
-func (d *Datastore) Delete(key ds.Key) error {
-	txn := d.DB.NewTransaction(true)
-	defer txn.Discard()
-	err := txn.Delete(key.Bytes())
-	if err != nil {
-		return err
-	}
-
-	//TODO: callback may potentially make this faster
-	return txn.Commit(nil)
+func (t *txn) Delete(key ds.Key) error {
+	return t.txn.Delete(key.Bytes())
 }
 
-func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
-	return d.QueryNew(q)
-}
-
-func (d *Datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
+func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 
-	txn := d.DB.NewTransaction(false)
+	txn := t.txn
 
 	it := txn.NewIterator(opt)
 	it.Seek([]byte(q.Prefix))
@@ -151,7 +208,6 @@ func (d *Datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	qrb := dsq.NewResultBuilder(q)
 
 	qrb.Process.Go(func(worker goprocess.Process) {
-		defer txn.Discard()
 		defer it.Close()
 
 		for sent := 0; it.ValidForPrefix(prefix); sent++ {
@@ -204,56 +260,10 @@ func (d *Datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	return qr, nil
 }
 
-// DiskUsage implements the PersistentDatastore interface.
-// It returns the sum of lsm and value log files sizes in bytes.
-func (d *Datastore) DiskUsage() (uint64, error) {
-	lsm, vlog := d.DB.Size()
-	return uint64(lsm + vlog), nil
+func (t *txn) Commit() error {
+	return t.txn.Commit(nil)
 }
 
-func (d *Datastore) Close() error {
-	return d.DB.Close()
-}
-
-func (d *Datastore) IsThreadSafe() {}
-
-type badgerBatch struct {
-	db  *badger.DB
-	txn *badger.Txn
-}
-
-func (d *Datastore) Batch() (ds.Batch, error) {
-	return &badgerBatch{
-		db:  d.DB,
-		txn: d.DB.NewTransaction(true),
-	}, nil
-}
-
-func (b *badgerBatch) Put(key ds.Key, value []byte) error {
-	err := b.txn.Set(key.Bytes(), value)
-	if err != nil {
-		b.txn.Discard()
-	}
-	return err
-}
-
-func (b *badgerBatch) Delete(key ds.Key) error {
-	err := b.txn.Delete(key.Bytes())
-	if err != nil {
-		b.txn.Discard()
-	}
-	return err
-}
-
-func (b *badgerBatch) Commit() error {
-	//TODO: Setting callback may potentially make this faster
-	return b.txn.Commit(nil)
-}
-
-func (d *Datastore) CollectGarbage() error {
-	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
-	if err == badger.ErrNoRewrite {
-		err = nil
-	}
-	return err
+func (t *txn) Rollback() {
+	t.txn.Discard()
 }
