@@ -520,3 +520,99 @@ func TestDiskUsage(t *testing.T) {
 	}
 	d.Close()
 }
+
+func TestTxnRollback(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+	key := ds.NewKey("/test/thing")
+	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	txn.Rollback()
+	has, err := d.Has(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has {
+		t.Fatal("key written in aborted transaction still exists")
+	}
+
+	d.Close()
+}
+
+func TestTxnCommit(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+	key := ds.NewKey("/test/thing")
+	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	txn.Commit()
+	has, err := d.Has(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Fatal("key written in committed transaction does not exist")
+	}
+
+	d.Close()
+}
+
+func TestTxnBatch(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+
+	data := make(map[ds.Key][]byte)
+	for i := 0; i < 10; i++ {
+		key := ds.NewKey(fmt.Sprintf("/test/%d", i))
+		bytes := make([]byte, 16)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data[key] = bytes
+
+		err = txn.Put(key, bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	err = txn.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for key, bytes := range data {
+		retrieved, err := d.Get(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rbytes := retrieved.([]byte)
+		if len(rbytes) != len(bytes) {
+			t.Fatal("bytes stored different length from bytes generated")
+		}
+		for i, b := range rbytes {
+			if bytes[i] != b {
+				t.Fatal("bytes stored different content from bytes generated")
+			}
+		}
+	}
+
+	d.Close()
+}
