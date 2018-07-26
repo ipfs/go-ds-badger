@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -611,6 +612,62 @@ func TestTxnBatch(t *testing.T) {
 			if bytes[i] != b {
 				t.Fatal("bytes stored different content from bytes generated")
 			}
+		}
+	}
+
+	d.Close()
+}
+
+func TestTTL(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+
+	data := make(map[ds.Key][]byte)
+	for i := 0; i < 10; i++ {
+		key := ds.NewKey(fmt.Sprintf("/test/%d", i))
+		bytes := make([]byte, 16)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data[key] = bytes
+	}
+
+	// write data
+	for key, bytes := range data {
+		err = txn.(ds.TTLDatastore).PutWithTTL(key, bytes, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	err = txn.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn = d.NewTransaction(true)
+	for key := range data {
+		_, err := txn.Get(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	txn.Rollback()
+
+	time.Sleep(time.Second)
+
+	for key := range data {
+		has, err := d.Has(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if has {
+			t.Fatal("record with ttl did not expire")
 		}
 	}
 

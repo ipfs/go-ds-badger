@@ -215,11 +215,11 @@ func (t *txn) Get(key ds.Key) (interface{}, error) {
 }
 
 func (t *txn) Has(key ds.Key) (bool, error) {
-	_, err := t.txn.Get(key.Bytes())
+	_, err := t.Get(key)
 
 	if err == nil {
 		return true, nil
-	} else if err == badger.ErrKeyNotFound {
+	} else if err == ds.ErrNotFound {
 		return false, nil
 	}
 
