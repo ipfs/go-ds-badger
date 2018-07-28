@@ -30,7 +30,7 @@ var testcases = map[string]string{
 //
 //  d, close := newDS(t)
 //  defer close()
-func newDS(t *testing.T) (*datastore, func()) {
+func newDS(t *testing.T) (*Datastore, func()) {
 	path, err := ioutil.TempDir("/tmp", "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func newDS(t *testing.T) (*datastore, func()) {
 	}
 }
 
-func addTestCases(t *testing.T, d *datastore, testcases map[string]string) {
+func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
 	for k, v := range testcases {
 		dsk := ds.NewKey(k)
 		if err := d.Put(dsk, []byte(v)); err != nil {

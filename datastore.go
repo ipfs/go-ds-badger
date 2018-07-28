@@ -12,7 +12,7 @@ import (
 	goprocess "github.com/jbenet/goprocess"
 )
 
-type datastore struct {
+type Datastore struct {
 	DB *badger.DB
 
 	gcDiscardRatio float64
@@ -34,7 +34,7 @@ var DefaultOptions = Options{
 // NewDatastore creates a new badger datastore.
 //
 // DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
-func NewDatastore(path string, options *Options) (*datastore, error) {
+func NewDatastore(path string, options *Options) (*Datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
 	var gcDiscardRatio float64
@@ -61,14 +61,14 @@ func NewDatastore(path string, options *Options) (*datastore, error) {
 		return nil, err
 	}
 
-	return &datastore{
+	return &Datastore{
 		DB: kv,
 
 		gcDiscardRatio: gcDiscardRatio,
 	}, nil
 }
 
-func (d *datastore) Put(key ds.Key, value interface{}) error {
+func (d *Datastore) Put(key ds.Key, value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
 		return ds.ErrInvalidType
@@ -86,7 +86,7 @@ func (d *datastore) Put(key ds.Key, value interface{}) error {
 	return txn.Commit(nil)
 }
 
-func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
+func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
 	txn := d.DB.NewTransaction(false)
 	defer txn.Discard()
 
@@ -108,7 +108,7 @@ func (d *datastore) Get(key ds.Key) (value interface{}, err error) {
 	return out, nil
 }
 
-func (d *datastore) Has(key ds.Key) (bool, error) {
+func (d *Datastore) Has(key ds.Key) (bool, error) {
 	txn := d.DB.NewTransaction(false)
 	defer txn.Discard()
 	_, err := txn.Get(key.Bytes())
@@ -122,7 +122,7 @@ func (d *datastore) Has(key ds.Key) (bool, error) {
 	return true, nil
 }
 
-func (d *datastore) Delete(key ds.Key) error {
+func (d *Datastore) Delete(key ds.Key) error {
 	txn := d.DB.NewTransaction(true)
 	defer txn.Discard()
 	err := txn.Delete(key.Bytes())
@@ -134,11 +134,11 @@ func (d *datastore) Delete(key ds.Key) error {
 	return txn.Commit(nil)
 }
 
-func (d *datastore) Query(q dsq.Query) (dsq.Results, error) {
+func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
 	return d.QueryNew(q)
 }
 
-func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
+func (d *Datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
@@ -211,23 +211,23 @@ func (d *datastore) QueryNew(q dsq.Query) (dsq.Results, error) {
 
 // DiskUsage implements the PersistentDatastore interface.
 // It returns the sum of lsm and value log files sizes in bytes.
-func (d *datastore) DiskUsage() (uint64, error) {
+func (d *Datastore) DiskUsage() (uint64, error) {
 	lsm, vlog := d.DB.Size()
 	return uint64(lsm + vlog), nil
 }
 
-func (d *datastore) Close() error {
+func (d *Datastore) Close() error {
 	return d.DB.Close()
 }
 
-func (d *datastore) IsThreadSafe() {}
+func (d *Datastore) IsThreadSafe() {}
 
 type badgerBatch struct {
 	db  *badger.DB
 	txn *badger.Txn
 }
 
-func (d *datastore) Batch() (ds.Batch, error) {
+func (d *Datastore) Batch() (ds.Batch, error) {
 	return &badgerBatch{
 		db:  d.DB,
 		txn: d.DB.NewTransaction(true),
@@ -260,7 +260,7 @@ func (b *badgerBatch) Commit() error {
 	return b.txn.Commit(nil)
 }
 
-func (d *datastore) CollectGarbage() error {
+func (d *Datastore) CollectGarbage() error {
 	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
 	if err == badger.ErrNoRewrite {
 		err = nil
