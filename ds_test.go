@@ -522,7 +522,7 @@ func TestDiskUsage(t *testing.T) {
 	d.Close()
 }
 
-func TestTxnRollback(t *testing.T) {
+func TestTxnDiscard(t *testing.T) {
 	d, err := NewDatastore("/tmp/testing_badger_du", nil)
 	defer os.RemoveAll("/tmp/testing_badger_du")
 	if err != nil {
@@ -534,7 +534,7 @@ func TestTxnRollback(t *testing.T) {
 	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
 	}
-	txn.Rollback()
+	txn.Discard()
 	has, err := d.Has(key)
 	if err != nil {
 		t.Fatal(err)
@@ -657,7 +657,7 @@ func TestTTL(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	txn.Rollback()
+	txn.Discard()
 
 	time.Sleep(time.Second)
 

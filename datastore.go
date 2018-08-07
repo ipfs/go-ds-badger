@@ -79,7 +79,7 @@ func (d *Datastore) NewTransaction(readOnly bool) ds.Txn {
 
 func (d *Datastore) Put(key ds.Key, value interface{}) error {
 	txn := d.NewTransaction(false)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	if err := txn.Put(key, value); err != nil {
 		return err
@@ -90,7 +90,7 @@ func (d *Datastore) Put(key ds.Key, value interface{}) error {
 
 func (d *datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
 	txn := d.NewTransaction(false).(*txn)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	if err := txn.PutWithTTL(key, value, ttl); err != nil {
 		return err
@@ -101,7 +101,7 @@ func (d *datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration)
 
 func (d *datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 	txn := d.NewTransaction(false).(*txn)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	if err := txn.SetTTL(key, ttl); err != nil {
 		return err
@@ -112,21 +112,21 @@ func (d *datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 
 func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
 	txn := d.NewTransaction(true)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	return txn.Get(key)
 }
 
 func (d *Datastore) Has(key ds.Key) (bool, error) {
 	txn := d.NewTransaction(true)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	return txn.Has(key)
 }
 
 func (d *Datastore) Delete(key ds.Key) error {
 	txn := d.NewTransaction(false)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	err := txn.Delete(key)
 	if err != nil {
@@ -138,7 +138,7 @@ func (d *Datastore) Delete(key ds.Key) error {
 
 func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
 	txn := d.NewTransaction(true)
-	defer txn.Rollback()
+	defer txn.Discard()
 
 	return txn.Query(q)
 }
@@ -304,6 +304,6 @@ func (t *txn) Commit() error {
 	return t.txn.Commit(nil)
 }
 
-func (t *txn) Rollback() {
+func (t *txn) Discard() {
 	t.txn.Discard()
 }
