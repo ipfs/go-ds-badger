@@ -88,7 +88,7 @@ func (d *Datastore) Put(key ds.Key, value interface{}) error {
 	return txn.Commit()
 }
 
-func (d *datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
+func (d *Datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
 	txn := d.NewTransaction(false).(*txn)
 	defer txn.Discard()
 
@@ -99,7 +99,7 @@ func (d *datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration)
 	return txn.Commit()
 }
 
-func (d *datastore) SetTTL(key ds.Key, ttl time.Duration) error {
+func (d *Datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 	txn := d.NewTransaction(false).(*txn)
 	defer txn.Discard()
 
