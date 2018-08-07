@@ -19,6 +19,8 @@ type Datastore struct {
 	gcDiscardRatio float64
 }
 
+// Implements the datastore.Txn interface, enabling transaction support for
+// the badger Datastore.
 type txn struct {
 	txn *badger.Txn
 }
@@ -73,6 +75,9 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	}, nil
 }
 
+// NewTransaction starts a new transaction. The resulting transaction object
+// can be mutated without incurring changes to the underlying Datastore until
+// the transaction is Committed.
 func (d *Datastore) NewTransaction(readOnly bool) ds.Txn {
 	return &txn{d.DB.NewTransaction(!readOnly)}
 }
