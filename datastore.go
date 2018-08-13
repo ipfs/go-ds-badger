@@ -68,16 +68,11 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	}, nil
 }
 
-func (d *Datastore) Put(key ds.Key, value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
-		return ds.ErrInvalidType
-	}
-
+func (d *Datastore) Put(key ds.Key, value []byte) error {
 	txn := d.DB.NewTransaction(true)
 	defer txn.Discard()
 
-	err := txn.Set(key.Bytes(), val)
+	err := txn.Set(key.Bytes(), value)
 	if err != nil {
 		return err
 	}
@@ -86,7 +81,7 @@ func (d *Datastore) Put(key ds.Key, value interface{}) error {
 	return txn.Commit(nil)
 }
 
-func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
+func (d *Datastore) Get(key ds.Key) (value []byte, err error) {
 	txn := d.DB.NewTransaction(false)
 	defer txn.Discard()
 
@@ -234,13 +229,8 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 	}, nil
 }
 
-func (b *badgerBatch) Put(key ds.Key, value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
-		return ds.ErrInvalidType
-	}
-
-	err := b.txn.Set(key.Bytes(), val)
+func (b *badgerBatch) Put(key ds.Key, value []byte) error {
+	err := b.txn.Set(key.Bytes(), value)
 	if err != nil {
 		b.txn.Discard()
 	}
