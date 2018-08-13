@@ -54,22 +54,13 @@ func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
 		}
 	}
 
-	err := d.Put(ds.NewKey("/foo"), nil)
-	if err != ds.ErrInvalidType {
-		t.Error("Expected err to be ds.ErrInvalidType")
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	for k, v := range testcases {
 		dsk := ds.NewKey(k)
 		v2, err := d.Get(dsk)
 		if err != nil {
 			t.Fatal(err)
 		}
-		v2b := v2.([]byte)
-		if string(v2b) != v {
+		if string(v2) != v {
 			t.Errorf("%s values differ: %s != %s", k, v, v2)
 		}
 	}
@@ -198,7 +189,7 @@ func TestGetEmpty(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(v.([]byte)) != 0 {
+	if len(v) != 0 {
 		t.Error("expected 0 len []byte form get")
 	}
 }
@@ -241,14 +232,6 @@ func TestBatching(t *testing.T) {
 		}
 	}
 
-	err = b.Put(ds.NewKey("/foo"), nil)
-	if err != ds.ErrInvalidType {
-		t.Error("Expected err to be ds.ErrInvalidType")
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	err = b.Commit()
 	if err != nil {
 		t.Fatal(err)
@@ -260,7 +243,7 @@ func TestBatching(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if v != string(val.([]byte)) {
+		if v != string(val) {
 			t.Fatal("got wrong data!")
 		}
 	}
@@ -332,13 +315,8 @@ func TestBasicPutGet(t *testing.T) {
 		t.Fatal("error getting value after put: ", err)
 	}
 
-	outb, ok := out.([]byte)
-	if !ok {
-		t.Fatalf("output type wasnt []byte, it was %T", out)
-	}
-
-	if !bytes.Equal(outb, val) {
-		t.Fatal("value received on get wasnt what we expected:", outb)
+	if !bytes.Equal(out, val) {
+		t.Fatal("value received on get wasnt what we expected:", out)
 	}
 
 	have, err = d.Has(k)
@@ -422,12 +400,7 @@ func TestManyKeysAndQuery(t *testing.T) {
 			t.Fatalf("error on get[%d]: %s", i, err)
 		}
 
-		valb, ok := val.([]byte)
-		if !ok {
-			t.Fatalf("expected []byte as output from get, got: %T", val)
-		}
-
-		if !bytes.Equal(valb, values[i]) {
+		if !bytes.Equal(val, values[i]) {
 			t.Fatal("input value didnt match the one returned from Get")
 		}
 	}
