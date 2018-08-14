@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -518,5 +519,156 @@ func TestDiskUsage(t *testing.T) {
 	if s <= 0 {
 		t.Error("expected some size")
 	}
+	d.Close()
+}
+
+func TestTxnDiscard(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+	key := ds.NewKey("/test/thing")
+	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	txn.Discard()
+	has, err := d.Has(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has {
+		t.Fatal("key written in aborted transaction still exists")
+	}
+
+	d.Close()
+}
+
+func TestTxnCommit(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+	key := ds.NewKey("/test/thing")
+	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	txn.Commit()
+	has, err := d.Has(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Fatal("key written in committed transaction does not exist")
+	}
+
+	d.Close()
+}
+
+func TestTxnBatch(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+
+	data := make(map[ds.Key][]byte)
+	for i := 0; i < 10; i++ {
+		key := ds.NewKey(fmt.Sprintf("/test/%d", i))
+		bytes := make([]byte, 16)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data[key] = bytes
+
+		err = txn.Put(key, bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	err = txn.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for key, bytes := range data {
+		retrieved, err := d.Get(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(retrieved) != len(bytes) {
+			t.Fatal("bytes stored different length from bytes generated")
+		}
+		for i, b := range retrieved {
+			if bytes[i] != b {
+				t.Fatal("bytes stored different content from bytes generated")
+			}
+		}
+	}
+
+	d.Close()
+}
+
+func TestTTL(t *testing.T) {
+	d, err := NewDatastore("/tmp/testing_badger_du", nil)
+	defer os.RemoveAll("/tmp/testing_badger_du")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn := d.NewTransaction(false)
+
+	data := make(map[ds.Key][]byte)
+	for i := 0; i < 10; i++ {
+		key := ds.NewKey(fmt.Sprintf("/test/%d", i))
+		bytes := make([]byte, 16)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data[key] = bytes
+	}
+
+	// write data
+	for key, bytes := range data {
+		err = txn.(ds.TTLDatastore).PutWithTTL(key, bytes, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	err = txn.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txn = d.NewTransaction(true)
+	for key := range data {
+		_, err := txn.Get(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	txn.Discard()
+
+	time.Sleep(time.Second)
+
+	for key := range data {
+		has, err := d.Has(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if has {
+			t.Fatal("record with ttl did not expire")
+		}
+	}
+
 	d.Close()
 }
