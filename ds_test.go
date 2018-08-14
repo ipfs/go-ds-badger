@@ -604,11 +604,10 @@ func TestTxnBatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		rbytes := retrieved.([]byte)
-		if len(rbytes) != len(bytes) {
+		if len(retrieved) != len(bytes) {
 			t.Fatal("bytes stored different length from bytes generated")
 		}
-		for i, b := range rbytes {
+		for i, b := range retrieved {
 			if bytes[i] != b {
 				t.Fatal("bytes stored different content from bytes generated")
 			}

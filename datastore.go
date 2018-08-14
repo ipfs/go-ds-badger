@@ -82,7 +82,7 @@ func (d *Datastore) NewTransaction(readOnly bool) ds.Txn {
 	return &txn{d.DB.NewTransaction(!readOnly)}
 }
 
-func (d *Datastore) Put(key ds.Key, value interface{}) error {
+func (d *Datastore) Put(key ds.Key, value []byte) error {
 	txn := d.NewTransaction(false)
 	defer txn.Discard()
 
@@ -93,7 +93,7 @@ func (d *Datastore) Put(key ds.Key, value interface{}) error {
 	return txn.Commit()
 }
 
-func (d *Datastore) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
+func (d *Datastore) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
 	txn := d.NewTransaction(false).(*txn)
 	defer txn.Discard()
 
@@ -115,7 +115,7 @@ func (d *Datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 	return txn.Commit()
 }
 
-func (d *Datastore) Get(key ds.Key) (value interface{}, err error) {
+func (d *Datastore) Get(key ds.Key) (value []byte, err error) {
 	txn := d.NewTransaction(true)
 	defer txn.Discard()
 
@@ -173,22 +173,12 @@ func (d *Datastore) CollectGarbage() error {
 	return err
 }
 
-func (t *txn) Put(key ds.Key, value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return ds.ErrInvalidType
-	}
-
-	return t.txn.Set(key.Bytes(), bytes)
+func (t *txn) Put(key ds.Key, value []byte) error {
+	return t.txn.Set(key.Bytes(), value)
 }
 
-func (t *txn) PutWithTTL(key ds.Key, value interface{}, ttl time.Duration) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return ds.ErrInvalidType
-	}
-
-	return t.txn.SetWithTTL(key.Bytes(), bytes, ttl)
+func (t *txn) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
+	return t.txn.SetWithTTL(key.Bytes(), value, ttl)
 }
 
 func (t *txn) SetTTL(key ds.Key, ttl time.Duration) error {
@@ -200,7 +190,7 @@ func (t *txn) SetTTL(key ds.Key, ttl time.Duration) error {
 	return t.PutWithTTL(key, data, ttl)
 }
 
-func (t *txn) Get(key ds.Key) (interface{}, error) {
+func (t *txn) Get(key ds.Key) ([]byte, error) {
 	item, err := t.txn.Get(key.Bytes())
 	if err == badger.ErrKeyNotFound {
 		err = ds.ErrNotFound
