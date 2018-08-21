@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
 
 	ds "github.com/ipfs/go-datastore"
@@ -53,7 +52,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		gcDiscardRatio = options.gcDiscardRatio
 	}
 
-	if osh.IsWindows() && opt.SyncWrites {
+	if opt.SyncWrites {
 		opt.Truncate = true
 	}
 
