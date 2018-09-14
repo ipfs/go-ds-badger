@@ -672,3 +672,79 @@ func TestTTL(t *testing.T) {
 
 	d.Close()
 }
+
+func TestExpirations(t *testing.T) {
+	var err error
+
+	d, done := newDS(t)
+	defer done()
+
+	txn := d.NewTransaction(false)
+	ttltxn := txn.(ds.TTLDatastore)
+	defer txn.Discard()
+
+	key := ds.NewKey("/abc/def")
+	val := make([]byte, 32)
+	if n, err := rand.Read(val); n != 32 || err != nil {
+		t.Fatal("source of randomness failed")
+	}
+
+	ttl := time.Hour
+	now := time.Now()
+	tgt := now.Add(ttl)
+
+	if err = ttltxn.PutWithTTL(key, val, ttl); err != nil {
+		t.Fatalf("adding with ttl failed: %v", err)
+	}
+
+	if err = txn.Commit(); err != nil {
+		t.Fatalf("commiting transaction failed: %v", err)
+	}
+
+	// Second transaction to retrieve expirations.
+	txn = d.NewTransaction(true)
+	ttltxn = txn.(ds.TTLDatastore)
+	defer txn.Discard()
+
+	// GetExpiration returns expected value.
+	var dsExp time.Time
+	if dsExp, err = ttltxn.GetExpiration(key); err != nil {
+		t.Fatalf("getting expiration failed: %v", err)
+	} else if tgt.Sub(dsExp) >= 5*time.Second {
+		t.Fatal("expiration returned by datastore not within the expected range (tolerance: 5 seconds)")
+	} else if tgt.Sub(dsExp) < 0 {
+		t.Fatal("expiration returned by datastore was earlier than expected")
+	}
+
+	// Iterator returns expected value.
+	q := dsq.Query{
+		ReturnExpirations: true,
+		KeysOnly:          true,
+	}
+	var ress dsq.Results
+	if ress, err = txn.Query(q); err != nil {
+		t.Fatalf("querying datastore failed: %v", err)
+	}
+
+	defer ress.Close()
+	if res, ok := ress.NextSync(); !ok {
+		t.Fatal("expected 1 result in iterator")
+	} else if res.Expiration != dsExp {
+		t.Fatalf("expiration returned from iterator differs from GetExpiration, expected: %v, actual: %v", dsExp, res.Expiration)
+	}
+
+	if _, ok := ress.NextSync(); ok {
+		t.Fatal("expected no more results in iterator")
+	}
+
+	// Datastore->GetExpiration()
+	if exp, err := d.GetExpiration(key); err != nil {
+		t.Fatalf("querying datastore failed: %v", err)
+	} else if exp != dsExp {
+		t.Fatalf("expiration returned from DB differs from that returned by txn, expected: %v, actual: %v", dsExp, exp)
+	}
+
+	if _, err := d.GetExpiration(ds.NewKey("/foo/bar")); err != ds.ErrNotFound {
+		t.Fatalf("wrong error type: %v", err)
+	}
+}

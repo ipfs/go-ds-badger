@@ -73,8 +73,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	}
 
 	return &Datastore{
-		DB: kv,
-
+		DB:             kv,
 		gcDiscardRatio: gcDiscardRatio,
 	}, nil
 }
@@ -123,6 +122,13 @@ func (d *Datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 	}
 
 	return txn.Commit()
+}
+
+func (d *Datastore) GetExpiration(key ds.Key) (time.Time, error) {
+	txn := d.newImplicitTransaction(false).(*txn)
+	defer txn.Discard()
+
+	return txn.GetExpiration(key)
 }
 
 func (d *Datastore) Get(key ds.Key) (value []byte, err error) {
@@ -190,6 +196,16 @@ func (t *txn) Put(key ds.Key, value []byte) error {
 
 func (t *txn) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
 	return t.txn.SetWithTTL(key.Bytes(), value, ttl)
+}
+
+func (t *txn) GetExpiration(key ds.Key) (time.Time, error) {
+	item, err := t.txn.Get(key.Bytes())
+	if err == badger.ErrKeyNotFound {
+		return time.Time{}, ds.ErrNotFound
+	} else if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(int64(item.ExpiresAt()), 0), nil
 }
 
 func (t *txn) SetTTL(key ds.Key, ttl time.Duration) error {
@@ -284,6 +300,10 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 				}
 			} else {
 				result = dsq.Result{Entry: e}
+			}
+
+			if q.ReturnExpirations {
+				result.Expiration = time.Unix(int64(item.ExpiresAt()), 0)
 			}
 
 			select {
