@@ -744,4 +744,7 @@ func TestExpirations(t *testing.T) {
 		t.Fatalf("expiration returned from DB differs from that returned by txn, expected: %v, actual: %v", dsExp, exp)
 	}
 
+	if _, err := d.GetExpiration(ds.NewKey("/foo/bar")); err != ds.ErrNotFound {
+		t.Fatalf("wrong error type: %v", err)
+	}
 }
