@@ -21,9 +21,9 @@
     },
     {
       "author": "dgraph-io",
-      "hash": "Qmb3GBFCHMuzmi9EpH3pxpYBiviyc3tEPyDQHxZJQJSxj9",
+      "hash": "Qma6ggNTpnFFzdxgLQUmpb6E9fmU34WxHNiFmuzadxr31w",
       "name": "badger",
-      "version": "2.7.3"
+      "version": "2.8.0"
     },
     {
       "author": "Kubuxu",
