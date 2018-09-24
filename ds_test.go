@@ -529,7 +529,10 @@ func TestTxnDiscard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn := d.NewTransaction(false)
+	txn, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	key := ds.NewKey("/test/thing")
 	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
@@ -553,7 +556,10 @@ func TestTxnCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn := d.NewTransaction(false)
+	txn, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	key := ds.NewKey("/test/thing")
 	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
@@ -577,8 +583,10 @@ func TestTxnBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn := d.NewTransaction(false)
-
+	txn, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	data := make(map[ds.Key][]byte)
 	for i := 0; i < 10; i++ {
 		key := ds.NewKey(fmt.Sprintf("/test/%d", i))
@@ -624,7 +632,10 @@ func TestTTL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn := d.NewTransaction(false)
+	txn, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	data := make(map[ds.Key][]byte)
 	for i := 0; i < 10; i++ {
@@ -649,7 +660,10 @@ func TestTTL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn = d.NewTransaction(true)
+	txn, err = d.NewTransaction(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for key := range data {
 		_, err := txn.Get(key)
 		if err != nil {
@@ -679,7 +693,10 @@ func TestExpirations(t *testing.T) {
 	d, done := newDS(t)
 	defer done()
 
-	txn := d.NewTransaction(false)
+	txn, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ttltxn := txn.(ds.TTLDatastore)
 	defer txn.Discard()
 
@@ -702,7 +719,10 @@ func TestExpirations(t *testing.T) {
 	}
 
 	// Second transaction to retrieve expirations.
-	txn = d.NewTransaction(true)
+	txn, err = d.NewTransaction(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ttltxn = txn.(ds.TTLDatastore)
 	defer txn.Discard()
 
