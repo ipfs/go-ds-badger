@@ -15,9 +15,9 @@
     },
     {
       "author": "jbenet",
-      "hash": "QmUyz7JTJzgegC6tiJrfby3mPhzcdswVtG4x58TQ6pq8jV",
+      "hash": "QmbQshXLNcCPRUGZv4sBGxnZNAHREA6MKeomkwihNXPZWP",
       "name": "go-datastore",
-      "version": "3.2.0"
+      "version": "3.3.0"
     },
     {
       "author": "dgraph-io",
