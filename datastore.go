@@ -42,6 +42,10 @@ var DefaultOptions = Options{
 	Options: badger.DefaultOptions,
 }
 
+var _ ds.Datastore = (*Datastore)(nil)
+var _ ds.TxnDatastore = (*Datastore)(nil)
+var _ ds.TTLDatastore = (*Datastore)(nil)
+
 // NewDatastore creates a new badger datastore.
 //
 // DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
@@ -81,8 +85,8 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 // NewTransaction starts a new transaction. The resulting transaction object
 // can be mutated without incurring changes to the underlying Datastore until
 // the transaction is Committed.
-func (d *Datastore) NewTransaction(readOnly bool) ds.Txn {
-	return &txn{d.DB.NewTransaction(!readOnly), false}
+func (d *Datastore) NewTransaction(readOnly bool) (ds.Txn, error) {
+	return &txn{d.DB.NewTransaction(!readOnly), false}, nil
 }
 
 // newImplicitTransaction creates a transaction marked as 'implicit'.
@@ -179,7 +183,8 @@ func (d *Datastore) Close() error {
 func (d *Datastore) IsThreadSafe() {}
 
 func (d *Datastore) Batch() (ds.Batch, error) {
-	return d.NewTransaction(false), nil
+	tx, _ := d.NewTransaction(false)
+	return tx, nil
 }
 
 func (d *Datastore) CollectGarbage() error {
