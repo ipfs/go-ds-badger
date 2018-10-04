@@ -242,15 +242,15 @@ func (t *txn) Get(key ds.Key) ([]byte, error) {
 }
 
 func (t *txn) Has(key ds.Key) (bool, error) {
-	_, err := t.Get(key)
-
-	if err == nil {
-		return true, nil
-	} else if err == ds.ErrNotFound {
+	_, err := t.txn.Get(key.Bytes())
+	switch err {
+	case badger.ErrKeyNotFound:
 		return false, nil
+	case nil:
+		return true, nil
+	default:
+		return false, err
 	}
-
-	return false, err
 }
 
 func (t *txn) Delete(key ds.Key) error {
