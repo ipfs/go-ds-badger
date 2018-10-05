@@ -149,6 +149,13 @@ func (d *Datastore) Has(key ds.Key) (bool, error) {
 	return txn.Has(key)
 }
 
+func (d *Datastore) GetSize(key ds.Key) (size int, err error) {
+	txn := d.newImplicitTransaction(true)
+	defer txn.Discard()
+
+	return txn.GetSize(key)
+}
+
 func (d *Datastore) Delete(key ds.Key) error {
 	txn := d.newImplicitTransaction(false)
 	defer txn.Discard()
@@ -231,14 +238,7 @@ func (t *txn) Get(key ds.Key) ([]byte, error) {
 		return nil, err
 	}
 
-	val, err := item.Value()
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]byte, len(val))
-	copy(out, val)
-	return out, nil
+	return item.ValueCopy(nil)
 }
 
 func (t *txn) Has(key ds.Key) (bool, error) {
@@ -250,6 +250,18 @@ func (t *txn) Has(key ds.Key) (bool, error) {
 		return true, nil
 	default:
 		return false, err
+	}
+}
+
+func (t *txn) GetSize(key ds.Key) (int, error) {
+	item, err := t.txn.Get(key.Bytes())
+	switch err {
+	case nil:
+		return int(item.ValueSize()), nil
+	case badger.ErrKeyNotFound:
+		return -1, ds.ErrNotFound
+	default:
+		return -1, err
 	}
 }
 
@@ -294,13 +306,11 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 
 			var result dsq.Result
 			if !q.KeysOnly {
-				b, err := item.Value()
+				b, err := item.ValueCopy(nil)
 				if err != nil {
 					result = dsq.Result{Error: err}
 				} else {
-					bytes := make([]byte, len(b))
-					copy(bytes, b)
-					e.Value = bytes
+					e.Value = b
 					result = dsq.Result{Entry: e}
 				}
 			} else {

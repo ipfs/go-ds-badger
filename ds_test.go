@@ -42,8 +42,8 @@ func newDS(t *testing.T) (*Datastore, func()) {
 		t.Fatal(err)
 	}
 	return d, func() {
-		os.RemoveAll(path)
 		d.Close()
+		os.RemoveAll(path)
 	}
 }
 
@@ -119,6 +119,26 @@ func TestHas(t *testing.T) {
 
 	if has {
 		t.Error("Key should not be found")
+	}
+}
+
+func TestGetSize(t *testing.T) {
+	d, done := newDS(t)
+	defer done()
+	addTestCases(t, d, testcases)
+
+	size, err := d.GetSize(ds.NewKey("/a/b/c"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if size != len(testcases["/a/b/c"]) {
+		t.Error("")
+	}
+
+	_, err = d.GetSize(ds.NewKey("/a/b/c/d"))
+	if err != ds.ErrNotFound {
+		t.Error(err)
 	}
 }
 
