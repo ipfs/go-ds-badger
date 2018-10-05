@@ -310,9 +310,7 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 				if err != nil {
 					result = dsq.Result{Error: err}
 				} else {
-					bytes := make([]byte, len(b))
-					copy(bytes, b)
-					e.Value = bytes
+					e.Value = b
 					result = dsq.Result{Entry: e}
 				}
 			} else {
