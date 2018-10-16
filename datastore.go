@@ -347,7 +347,7 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 }
 
 func (t *txn) Commit() error {
-	return t.txn.Commit(nil)
+	return t.txn.Commit()
 }
 
 func (t *txn) Discard() {
