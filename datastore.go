@@ -270,24 +270,18 @@ func (t *txn) Delete(key ds.Key) error {
 	return t.txn.Delete(key.Bytes())
 }
 
-// nativeOrders maps ordering policies supported natively to functions that configure the
-// iterator options accordingly.
-var nativeOrders = map[reflect.Type]func(opts *badger.IteratorOptions){
-	reflect.TypeOf(dsq.OrderByKey{}):            func(opts *badger.IteratorOptions) {},
-	reflect.TypeOf(&dsq.OrderByKey{}):           func(opts *badger.IteratorOptions) {},
-	reflect.TypeOf(dsq.OrderByKeyDescending{}):  func(opts *badger.IteratorOptions) { opts.Reverse = true },
-	reflect.TypeOf(&dsq.OrderByKeyDescending{}): func(opts *badger.IteratorOptions) { opts.Reverse = true },
-}
-
 func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 
-	// configure the iterator for ordering policies supported natively.
+Loop:
 	for _, o := range q.Orders {
-		if fn, ok := nativeOrders[reflect.TypeOf(o)]; ok {
-			fn(&opt)
+		switch o.(type) {
+		// handle reverse iterators.
+		case dsq.OrderByKeyDescending, *dsq.OrderByKeyDescending:
+			opt.Reverse = true
+			break Loop
 		}
 	}
 
@@ -357,8 +351,9 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 		qr = dsq.NaiveFilter(qr, f)
 	}
 	for _, o := range q.Orders {
-		// skip native ordering policies.
-		if _, ok := nativeOrders[reflect.TypeOf(o)]; ok {
+		// skip ordering policies handled natively.
+		switch o.(type) {
+		case dsq.OrderByKey, *dsq.OrderByKey, dsq.OrderByKeyDescending, *dsq.OrderByKeyDescending:
 			continue
 		}
 		qr = dsq.NaiveOrder(qr, o)
