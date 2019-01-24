@@ -32,7 +32,7 @@ var testcases = map[string]string{
 //  d, close := newDS(t)
 //  defer close()
 func newDS(t *testing.T) (*Datastore, func()) {
-	path, err := ioutil.TempDir("/tmp", "testing_badger_")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,15 +523,24 @@ func TestGC(t *testing.T) {
 // this interval is not configurable, we re-open the database
 // (the size is always calculated on Open) to make things quick.
 func TestDiskUsage(t *testing.T) {
-	d, err := NewDatastore("/tmp/testing_badger_du", nil)
-	defer os.RemoveAll("/tmp/testing_badger_du")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	d, err := NewDatastore(path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
 	addTestCases(t, d, testcases)
 	d.Close()
 
-	d, err = NewDatastore("/tmp/testing_badger_du", nil)
+	d, err = NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,8 +552,14 @@ func TestDiskUsage(t *testing.T) {
 }
 
 func TestTxnDiscard(t *testing.T) {
-	d, err := NewDatastore("/tmp/testing_badger_du", nil)
-	defer os.RemoveAll("/tmp/testing_badger_du")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	d, err := NewDatastore(path, nil)
+	defer os.RemoveAll(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,8 +585,13 @@ func TestTxnDiscard(t *testing.T) {
 }
 
 func TestTxnCommit(t *testing.T) {
-	d, err := NewDatastore("/tmp/testing_badger_du", nil)
-	defer os.RemoveAll("/tmp/testing_badger_du")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	d, err := NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,8 +617,13 @@ func TestTxnCommit(t *testing.T) {
 }
 
 func TestTxnBatch(t *testing.T) {
-	d, err := NewDatastore("/tmp/testing_badger_du", nil)
-	defer os.RemoveAll("/tmp/testing_badger_du")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	d, err := NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -646,8 +671,13 @@ func TestTxnBatch(t *testing.T) {
 }
 
 func TestTTL(t *testing.T) {
-	d, err := NewDatastore("/tmp/testing_badger_du", nil)
-	defer os.RemoveAll("/tmp/testing_badger_du")
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	d, err := NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
