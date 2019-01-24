@@ -274,6 +274,19 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 
+	// Special case order by key.
+	orders := q.Orders
+	if len(orders) > 0 {
+		switch q.Orders[0].(type) {
+		case dsq.OrderByKey, *dsq.OrderByKey:
+			// Already ordered by key.
+			orders = nil
+		case dsq.OrderByKeyDescending, *dsq.OrderByKeyDescending:
+			orders = nil
+			opt.Reverse = true
+		}
+	}
+
 	txn := t.txn
 
 	it := txn.NewIterator(opt)
@@ -339,8 +352,8 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	for _, f := range q.Filters {
 		qr = dsq.NaiveFilter(qr, f)
 	}
-	if len(q.Orders) > 0 {
-		qr = dsq.NaiveOrder(qr, q.Orders...)
+	if len(orders) > 0 {
+		qr = dsq.NaiveOrder(qr, orders...)
 	}
 
 	return qr, nil
