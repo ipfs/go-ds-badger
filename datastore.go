@@ -339,8 +339,8 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	for _, f := range q.Filters {
 		qr = dsq.NaiveFilter(qr, f)
 	}
-	for _, o := range q.Orders {
-		qr = dsq.NaiveOrder(qr, o)
+	if len(q.Orders) > 0 {
+		qr = dsq.NaiveOrder(qr, q.Orders...)
 	}
 
 	return qr, nil
