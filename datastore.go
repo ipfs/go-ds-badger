@@ -290,7 +290,7 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 	txn := t.txn
 
 	it := txn.NewIterator(opt)
-	it.Seek([]byte(q.Prefix))
+	it.Seek(prefix)
 	if q.Offset > 0 {
 		for j := 0; j < q.Offset; j++ {
 			it.Next()
