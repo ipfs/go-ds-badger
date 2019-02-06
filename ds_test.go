@@ -700,7 +700,7 @@ func TestTTL(t *testing.T) {
 
 	// write data
 	for key, bytes := range data {
-		err = txn.(ds.TTLDatastore).PutWithTTL(key, bytes, time.Second)
+		err = txn.(ds.TTL).PutWithTTL(key, bytes, time.Second)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -747,7 +747,7 @@ func TestExpirations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ttltxn := txn.(ds.TTLDatastore)
+	ttltxn := txn.(ds.TTL)
 	defer txn.Discard()
 
 	key := ds.NewKey("/abc/def")
@@ -773,7 +773,7 @@ func TestExpirations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ttltxn = txn.(ds.TTLDatastore)
+	ttltxn = txn.(ds.TTL)
 	defer txn.Discard()
 
 	// GetExpiration returns expected value.
