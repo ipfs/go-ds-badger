@@ -202,6 +202,9 @@ func (d *Datastore) CollectGarbage() error {
 	return err
 }
 
+var _ ds.Datastore = (*txn)(nil)
+var _ ds.TTLDatastore = (*txn)(nil)
+
 func (t *txn) Put(key ds.Key, value []byte) error {
 	return t.txn.Set(key.Bytes(), value)
 }
@@ -360,6 +363,11 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 }
 
 func (t *txn) Commit() error {
+	return t.txn.Commit()
+}
+
+// Alias to commit
+func (t *txn) Close() error {
 	return t.txn.Commit()
 }
 
