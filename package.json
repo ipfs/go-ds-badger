@@ -21,9 +21,9 @@
     },
     {
       "author": "dgraph-io",
-      "hash": "QmYJpEU8b5VtVPPoTQtvNi5MphmsfF14wvevCL4Sd8DwLe",
+      "hash": "QmU4emVTYFKnoJ5yK3pPEN9joyEx6U7y892PDx26ZtNxQd",
       "name": "badger",
-      "version": "2.11.1"
+      "version": "2.11.4"
     },
     {
       "author": "Kubuxu",
@@ -37,6 +37,6 @@
   "license": "",
   "name": "go-ds-badger",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.12.1"
+  "version": "1.12.2"
 }
 
