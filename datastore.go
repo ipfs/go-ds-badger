@@ -7,11 +7,13 @@ import (
 
 	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
-
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	logger "github.com/ipfs/go-log"
 	goprocess "github.com/jbenet/goprocess"
 )
+
+var log = logger.Logger("badger")
 
 type Datastore struct {
 	DB *badger.DB
@@ -67,6 +69,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 
 	opt.Dir = path
 	opt.ValueDir = path
+	opt.Logger = log
 
 	kv, err := badger.Open(opt)
 	if err != nil {
