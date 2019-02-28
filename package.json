@@ -30,6 +30,11 @@
       "hash": "QmXuBJ7DR6k3rmUEKtvVMhwjmXDuJgXXPUt4LQXKBMsU93",
       "name": "go-os-helper",
       "version": "0.0.0"
+    },
+    {
+      "hash": "QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF",
+      "name": "go-log",
+      "version": "1.5.9"
     }
   ],
   "gxVersion": "0.8.0",
