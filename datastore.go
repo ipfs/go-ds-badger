@@ -94,7 +94,7 @@ func (d *Datastore) NewTransaction(readOnly bool) (ds.Txn, error) {
 
 // newImplicitTransaction creates a transaction marked as 'implicit'.
 // Implicit transactions are created by Datastore methods performing single operations.
-func (d *Datastore) newImplicitTransaction(readOnly bool) ds.Txn {
+func (d *Datastore) newImplicitTransaction(readOnly bool) *txn {
 	return &txn{d.DB.NewTransaction(!readOnly), true}
 }
 
@@ -110,7 +110,7 @@ func (d *Datastore) Put(key ds.Key, value []byte) error {
 }
 
 func (d *Datastore) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
-	txn := d.newImplicitTransaction(false).(*txn)
+	txn := d.newImplicitTransaction(false)
 	defer txn.Discard()
 
 	if err := txn.PutWithTTL(key, value, ttl); err != nil {
@@ -121,7 +121,7 @@ func (d *Datastore) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) erro
 }
 
 func (d *Datastore) SetTTL(key ds.Key, ttl time.Duration) error {
-	txn := d.newImplicitTransaction(false).(*txn)
+	txn := d.newImplicitTransaction(false)
 	defer txn.Discard()
 
 	if err := txn.SetTTL(key, ttl); err != nil {
@@ -132,7 +132,7 @@ func (d *Datastore) SetTTL(key ds.Key, ttl time.Duration) error {
 }
 
 func (d *Datastore) GetExpiration(key ds.Key) (time.Time, error) {
-	txn := d.newImplicitTransaction(false).(*txn)
+	txn := d.newImplicitTransaction(false)
 	defer txn.Discard()
 
 	return txn.GetExpiration(key)
