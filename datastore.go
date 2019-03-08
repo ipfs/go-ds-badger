@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -67,12 +66,6 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	} else {
 		opt = options.Options
 		gcDiscardRatio = options.gcDiscardRatio
-	}
-
-	// TODO: remove this? We should let the user choose what they want to
-	// do.
-	if osh.IsWindows() && opt.SyncWrites {
-		opt.Truncate = true
 	}
 
 	opt.Dir = path
