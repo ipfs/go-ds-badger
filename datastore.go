@@ -350,12 +350,14 @@ func (t *txn) SetTTL(key ds.Key, ttl time.Duration) error {
 }
 
 func (t *txn) setTTL(key ds.Key, ttl time.Duration) error {
-	data, err := t.get(key)
+	item, err := t.txn.Get(key.Bytes())
 	if err != nil {
 		return err
 	}
+	return item.Value(func(data []byte) error {
+		return t.putWithTTL(key, data, ttl)
+	})
 
-	return t.putWithTTL(key, data, ttl)
 }
 
 func (t *txn) Get(key ds.Key) ([]byte, error) {
