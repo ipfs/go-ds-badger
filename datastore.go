@@ -38,10 +38,16 @@ type Options struct {
 	badger.Options
 }
 
-var DefaultOptions = Options{
-	gcDiscardRatio: 0.1,
+// DefaultOptions are the default options for the badger datastore.
+var DefaultOptions Options
 
-	Options: badger.DefaultOptions,
+func init() {
+	DefaultOptions = Options{
+		gcDiscardRatio: 0.1,
+		Options:        badger.DefaultOptions,
+	}
+	DefaultOptions.Options.CompactL0OnClose = false
+	DefaultOptions.Options.Truncate = true
 }
 
 var _ ds.Datastore = (*Datastore)(nil)
@@ -63,6 +69,8 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		gcDiscardRatio = options.gcDiscardRatio
 	}
 
+	// TODO: remove this? We should let the user choose what they want to
+	// do.
 	if osh.IsWindows() && opt.SyncWrites {
 		opt.Truncate = true
 	}
