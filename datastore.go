@@ -269,8 +269,6 @@ func (d *Datastore) Close() error {
 	return d.DB.Close()
 }
 
-func (d *Datastore) IsThreadSafe() {}
-
 func (d *Datastore) Batch() (ds.Batch, error) {
 	tx, _ := d.NewTransaction(false)
 	return tx, nil
