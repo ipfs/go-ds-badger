@@ -274,17 +274,20 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 	return tx, nil
 }
 
-func (d *Datastore) CollectGarbage() error {
+func (d *Datastore) CollectGarbage() (err error) {
 	d.closeLk.RLock()
 	defer d.closeLk.RUnlock()
 	if d.closed {
 		return ErrClosed
 	}
 
-	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
+	for err == nil {
+		err = d.DB.RunValueLogGC(d.gcDiscardRatio)
+	}
 	if err == badger.ErrNoRewrite {
 		err = nil
 	}
+
 	return err
 }
 
