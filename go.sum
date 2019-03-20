@@ -10,6 +10,8 @@ github.com/dgraph-io/badger v1.5.5-0.20181004181505-439fd464b155 h1:T4boC9W0W8nX
 github.com/dgraph-io/badger v1.5.5-0.20181004181505-439fd464b155/go.mod h1:VZxzAIRPHRVNRKRo6AXrX9BJegn6il06VMTZVJYCIjQ=
 github.com/dgraph-io/badger v1.5.5-0.20190226225317-8115aed38f8f h1:6itBiEUtu+gOzXZWn46bM5/qm8LlV6/byR7Yflx/y6M=
 github.com/dgraph-io/badger v1.5.5-0.20190226225317-8115aed38f8f/go.mod h1:VZxzAIRPHRVNRKRo6AXrX9BJegn6il06VMTZVJYCIjQ=
+github.com/dgraph-io/badger v2.0.0-rc.2+incompatible h1:7KPp6xv5+wymkVUbkAnZZXvmDrJlf09m/7u1HG5lAYA=
+github.com/dgraph-io/badger v2.0.0-rc.2+incompatible/go.mod h1:VZxzAIRPHRVNRKRo6AXrX9BJegn6il06VMTZVJYCIjQ=
 github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f h1:dDxpBYafY/GYpcl+LS4Bn3ziLPuEdGRkRjYAbSlWxSA=
 github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
