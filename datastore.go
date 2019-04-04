@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	osh "github.com/Kubuxu/go-os-helper"
 	badger "github.com/dgraph-io/badger"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -48,10 +47,16 @@ type Options struct {
 	badger.Options
 }
 
-var DefaultOptions = Options{
-	gcDiscardRatio: 0.1,
+// DefaultOptions are the default options for the badger datastore.
+var DefaultOptions Options
 
-	Options: badger.DefaultOptions,
+func init() {
+	DefaultOptions = Options{
+		gcDiscardRatio: 0.1,
+		Options:        badger.DefaultOptions,
+	}
+	DefaultOptions.Options.CompactL0OnClose = false
+	DefaultOptions.Options.Truncate = true
 }
 
 var _ ds.Datastore = (*Datastore)(nil)
@@ -71,10 +76,6 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	} else {
 		opt = options.Options
 		gcDiscardRatio = options.gcDiscardRatio
-	}
-
-	if osh.IsWindows() && opt.SyncWrites {
-		opt.Truncate = true
 	}
 
 	opt.Dir = path
