@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	badger "github.com/dgraph-io/badger/v2"
+	badger "github.com/dgraph-io/badger"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logger "github.com/ipfs/go-log"
@@ -315,7 +315,7 @@ func (t *txn) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
 }
 
 func (t *txn) putWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
-	return t.txn.SetEntry(badger.NewEntry(key.Bytes(), value).WithTTL(ttl))
+	return t.txn.SetWithTTL(key.Bytes(), value, ttl)
 }
 
 func (t *txn) GetExpiration(key ds.Key) (time.Time, error) {
