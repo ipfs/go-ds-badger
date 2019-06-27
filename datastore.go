@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	badger "github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logger "github.com/ipfs/go-log"
-	goprocess "github.com/jbenet/goprocess"
+	"github.com/jbenet/goprocess"
 )
 
 var log = logger.Logger("badger")
@@ -53,10 +53,7 @@ var DefaultOptions Options
 func init() {
 	DefaultOptions = Options{
 		gcDiscardRatio: 0.1,
-		Options:        badger.DefaultOptions,
 	}
-	DefaultOptions.Options.CompactL0OnClose = false
-	DefaultOptions.Options.Truncate = true
 }
 
 var _ ds.Datastore = (*Datastore)(nil)
@@ -67,19 +64,21 @@ var _ ds.TTLDatastore = (*Datastore)(nil)
 //
 // DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
 func NewDatastore(path string, options *Options) (*Datastore, error) {
-	// Copy the options because we modify them.
-	var opt badger.Options
 	var gcDiscardRatio float64
+	// Copy the options because we modify them.
+	opt := badger.DefaultOptions(path)
+	DefaultOptions.Options.CompactL0OnClose = false
+	DefaultOptions.Options.Truncate = true
+
 	if options == nil {
-		opt = badger.DefaultOptions
 		gcDiscardRatio = DefaultOptions.gcDiscardRatio
 	} else {
 		opt = options.Options
+		opt.Dir = path
+		opt.ValueDir = path
 		gcDiscardRatio = options.gcDiscardRatio
 	}
 
-	opt.Dir = path
-	opt.ValueDir = path
 	opt.Logger = log
 
 	kv, err := badger.Open(opt)
