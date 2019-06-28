@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	badger "github.com/dgraph-io/badger/v2"
+	badger "github.com/dgraph-io/badger"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logger "github.com/ipfs/go-log"
@@ -53,7 +53,7 @@ var DefaultOptions Options
 func init() {
 	DefaultOptions = Options{
 		gcDiscardRatio: 0.1,
-		Options:        badger.DefaultOptions,
+		Options:        badger.DefaultOptions(""),
 	}
 	DefaultOptions.Options.CompactL0OnClose = false
 	DefaultOptions.Options.Truncate = true
@@ -71,7 +71,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	var opt badger.Options
 	var gcDiscardRatio float64
 	if options == nil {
-		opt = badger.DefaultOptions
+		opt = badger.DefaultOptions("")
 		gcDiscardRatio = DefaultOptions.gcDiscardRatio
 	} else {
 		opt = options.Options
