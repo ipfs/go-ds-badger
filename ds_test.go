@@ -364,7 +364,7 @@ func TestBasicPutGet(t *testing.T) {
 	}
 }
 
-func SubtestNotFounds(t *testing.T) {
+func TestNotFounds(t *testing.T) {
 	d, done := newDS(t)
 	defer done()
 
@@ -502,7 +502,7 @@ func TestGC(t *testing.T) {
 
 	t.Logf("deleting %d values", count)
 	for i := 0; i < count; i++ {
-		b.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
+		err := b.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -604,7 +604,10 @@ func TestTxnCommit(t *testing.T) {
 	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
 	}
-	txn.Commit()
+	err = txn.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
 	has, err := d.Has(key)
 	if err != nil {
 		t.Fatal(err)
