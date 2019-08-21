@@ -547,11 +547,9 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 			it.Next()
 		}
-
-		return
 	})
 
-	go qrb.Process.CloseAfterChildren()
+	go qrb.Process.CloseAfterChildren() //nolint
 
 	// Now, apply remaining things (filters, order)
 	qr := qrb.Results()
