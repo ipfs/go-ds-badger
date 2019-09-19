@@ -9,6 +9,16 @@
 
 > Datastore implementation using [badger](https://github.com/dgraph-io/badger) as backend.
 
+## Lead Maintainer
+
+[Łukasz Magiera](https://github.com/magik6k)
+
+## Table of Contents
+
+- [Documentation](#documentation)
+- [Contribute](#contribute)
+- [License](#license)
+
 ## Documentation
 
 https://godoc.org/github.com/ipfs/go-ds-badger
