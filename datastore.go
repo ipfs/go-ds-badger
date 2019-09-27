@@ -450,9 +450,9 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 }
 
 func (t *txn) query(q dsq.Query) (dsq.Results, error) {
-	prefix := []byte(q.Prefix)
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
+	opt.Prefix = []byte(q.Prefix)
 
 	// Special case order by key.
 	orders := q.Orders
@@ -470,13 +470,6 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	txn := t.txn
 
 	it := txn.NewIterator(opt)
-	it.Seek(prefix)
-
-	if q.Offset > 0 {
-		for j := 0; j < q.Offset; j++ {
-			it.Next()
-		}
-	}
 
 	qrb := dsq.NewResultBuilder(q)
 
@@ -509,7 +502,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 		defer it.Close()
 
-		for sent := 0; it.ValidForPrefix(prefix); sent++ {
+		for sent := 0; it.Valid(); sent++ {
 			if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
 				break
 			}
