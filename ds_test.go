@@ -12,6 +12,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	dstest "github.com/ipfs/go-datastore/test"
 )
 
 var testcases = map[string]string{
@@ -820,4 +821,11 @@ func TestExpirations(t *testing.T) {
 	if _, err := d.GetExpiration(ds.NewKey("/foo/bar")); err != ds.ErrNotFound {
 		t.Fatalf("wrong error type: %v", err)
 	}
+}
+
+func TestSuite(t *testing.T) {
+	d, done := newDS(t)
+	defer done()
+
+	dstest.SubtestAll(t, d)
 }

@@ -454,25 +454,46 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	opt.PrefetchValues = !q.KeysOnly
 	opt.Prefix = []byte(q.Prefix)
 
-	// Special case order by key.
-	orders := q.Orders
-	if len(orders) > 0 {
+	// Handle ordering
+	if len(q.Orders) > 0 {
 		switch q.Orders[0].(type) {
 		case dsq.OrderByKey, *dsq.OrderByKey:
-			// Already ordered by key.
-			orders = nil
+		// We order by key by default.
 		case dsq.OrderByKeyDescending, *dsq.OrderByKeyDescending:
-			orders = nil
+			// Reverse order by key
 			opt.Reverse = true
+		default:
+			// Ok, we have a weird order we can't handle. Let's
+			// perform the _base_ query (prefix, filter, etc.), then
+			// handle sort/offset/limit later.
+
+			// Skip the stuff we can't apply.
+			baseQuery := q
+			baseQuery.Limit = 0
+			baseQuery.Offset = 0
+			baseQuery.Orders = nil
+
+			// perform the base query.
+			res, err := t.query(baseQuery)
+			if err != nil {
+				return nil, err
+			}
+
+			// fix the query
+			res = dsq.ResultsReplaceQuery(res, q)
+
+			// Remove the parts we've already applied.
+			naiveQuery := q
+			naiveQuery.Prefix = ""
+			naiveQuery.Filters = nil
+
+			// Apply the rest of the query
+			return dsq.NaiveQueryApply(naiveQuery, res), nil
 		}
 	}
 
-	txn := t.txn
-
-	it := txn.NewIterator(opt)
-
+	it := t.txn.NewIterator(opt)
 	qrb := dsq.NewResultBuilder(q)
-
 	qrb.Process.Go(func(worker goprocess.Process) {
 		t.ds.closeLk.RLock()
 		closedEarly := false
@@ -502,16 +523,63 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 		defer it.Close()
 
-		for sent := 0; it.Valid(); sent++ {
-			if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
-				break
+		// XXX: WHY DO I NEED THIS?
+		it.Rewind()
+
+		// skip to the offset
+		for skipped := 0; skipped < q.Offset && it.Valid(); it.Next() {
+			// On the happy path, we have no filters and we can go
+			// on our way.
+			if len(q.Filters) == 0 {
+				skipped++
+				continue
 			}
 
+			// On the sad path, we need to apply filters before
+			// counting the item as "skipped" as the offset comes
+			// _after_ the filter.
 			item := it.Item()
 
-			k := string(item.Key())
-			e := dsq.Entry{Key: k}
+			matches := true
+			check := func(value []byte) error {
+				e := dsq.Entry{Key: string(item.Key()), Value: value}
 
+				// Only calculate expirations if we need them.
+				if q.ReturnExpirations {
+					e.Expiration = expires(item)
+				}
+				matches = filter(q.Filters, e)
+				return nil
+			}
+
+			// Maybe check with the value, only if we need it.
+			var err error
+			if q.KeysOnly {
+				err = check(nil)
+			} else {
+				err = item.Value(check)
+			}
+
+			if err != nil {
+				select {
+				case qrb.Output <- dsq.Result{Error: err}:
+				case <-t.ds.closing: // datastore closing.
+					closedEarly = true
+					return
+				case <-worker.Closing(): // client told us to close early
+					return
+				}
+			}
+			if !matches {
+				skipped++
+			}
+		}
+
+		for sent := 0; (q.Limit <= 0 || sent < q.Limit) && it.Valid(); it.Next() {
+			item := it.Item()
+			e := dsq.Entry{Key: string(item.Key())}
+
+			// Maybe get the value
 			var result dsq.Result
 			if !q.KeysOnly {
 				b, err := item.ValueCopy(nil)
@@ -526,34 +594,29 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			}
 
 			if q.ReturnExpirations {
-				result.Expiration = time.Unix(int64(item.ExpiresAt()), 0)
+				result.Expiration = expires(item)
+			}
+
+			// Finally, filter it (unless we're dealing with an error).
+			if result.Error == nil && filter(q.Filters, e) {
+				continue
 			}
 
 			select {
 			case qrb.Output <- result:
+				sent++
 			case <-t.ds.closing: // datastore closing.
 				closedEarly = true
 				return
 			case <-worker.Closing(): // client told us to close early
 				return
 			}
-
-			it.Next()
 		}
 	})
 
 	go qrb.Process.CloseAfterChildren() //nolint
 
-	// Now, apply remaining things (filters, order)
-	qr := qrb.Results()
-	for _, f := range q.Filters {
-		qr = dsq.NaiveFilter(qr, f)
-	}
-	if len(orders) > 0 {
-		qr = dsq.NaiveOrder(qr, orders...)
-	}
-
-	return qr, nil
+	return qrb.Results(), nil
 }
 
 func (t *txn) Commit() error {
@@ -596,4 +659,18 @@ func (t *txn) Discard() {
 
 func (t *txn) discard() {
 	t.txn.Discard()
+}
+
+// filter returns _true_ if we should filter (skip) the entry
+func filter(filters []dsq.Filter, entry dsq.Entry) bool {
+	for _, f := range filters {
+		if !f.Filter(entry) {
+			return true
+		}
+	}
+	return false
+}
+
+func expires(item *badger.Item) time.Time {
+	return time.Unix(int64(item.ExpiresAt()), 0)
 }
