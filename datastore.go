@@ -523,7 +523,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 		defer it.Close()
 
-		// XXX: WHY DO I NEED THIS?
+		// All iterators must be started by rewinding.
 		it.Rewind()
 
 		// skip to the offset
