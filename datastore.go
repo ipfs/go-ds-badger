@@ -318,12 +318,13 @@ func (d *Datastore) CollectGarbage() (err error) {
 		return ErrClosed
 	}
 
-	gcTimeout := time.After(d.maxGcDuration)
+	gcTimeout := time.NewTimer(d.maxGcDuration)
+	defer gcTimeout.Stop()
 
 LOOP:
 	for {
 		select {
-		case <-gcTimeout:
+		case <-gcTimeout.C:
 			break LOOP
 		default:
 			if err == nil {
