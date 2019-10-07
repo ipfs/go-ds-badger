@@ -27,6 +27,8 @@ type Datastore struct {
 	closing   chan struct{}
 
 	gcDiscardRatio float64
+	maxGcDuration  time.Duration
+	gcInterval     time.Duration
 }
 
 // Implements the datastore.Txn interface, enabling transaction support for
@@ -42,7 +44,12 @@ type txn struct {
 
 // Options are the badger datastore options, reexported here for convenience.
 type Options struct {
-	gcDiscardRatio float64
+	// Please refer to the Badger docs to see what this is for
+	GcDiscardRatio float64
+	// Maximum duration to perform a single GC cycle for
+	MaxGcDuration time.Duration
+	// Interval between GC cycles
+	GcInterval time.Duration
 
 	badger.Options
 }
@@ -52,7 +59,9 @@ var DefaultOptions Options
 
 func init() {
 	DefaultOptions = Options{
-		gcDiscardRatio: 0.1,
+		GcDiscardRatio: 0.5,
+		MaxGcDuration:  1 * time.Minute,
+		GcInterval:     15 * time.Minute,
 		Options:        badger.DefaultOptions(""),
 	}
 	DefaultOptions.Options.CompactL0OnClose = false
@@ -62,6 +71,7 @@ func init() {
 var _ ds.Datastore = (*Datastore)(nil)
 var _ ds.TxnDatastore = (*Datastore)(nil)
 var _ ds.TTLDatastore = (*Datastore)(nil)
+var _ ds.GCDatastore = (*Datastore)(nil)
 
 // NewDatastore creates a new badger datastore.
 //
@@ -70,12 +80,18 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
 	var gcDiscardRatio float64
+	var maxGcDuration time.Duration
+	var gcInterval time.Duration
 	if options == nil {
 		opt = badger.DefaultOptions("")
-		gcDiscardRatio = DefaultOptions.gcDiscardRatio
+		gcDiscardRatio = DefaultOptions.GcDiscardRatio
+		maxGcDuration = DefaultOptions.MaxGcDuration
+		gcInterval = DefaultOptions.GcInterval
 	} else {
 		opt = options.Options
-		gcDiscardRatio = options.gcDiscardRatio
+		gcDiscardRatio = options.GcDiscardRatio
+		maxGcDuration = options.MaxGcDuration
+		gcInterval = options.GcInterval
 	}
 
 	opt.Dir = path
@@ -90,11 +106,31 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		return nil, err
 	}
 
-	return &Datastore{
+	ds := &Datastore{
 		DB:             kv,
 		closing:        make(chan struct{}),
 		gcDiscardRatio: gcDiscardRatio,
-	}, nil
+		maxGcDuration:  maxGcDuration,
+		gcInterval:     gcInterval,
+	}
+
+	// schedule periodic GC till db is closed
+	go ds.periodicGC()
+
+	return ds, nil
+}
+
+func (d *Datastore) periodicGC() {
+	for {
+		select {
+		case <-time.After(d.gcInterval):
+			if err := d.CollectGarbage(); err != nil {
+				log.Warningf("error during a GC cycle: %s", err)
+			}
+		case <-d.closing:
+			return
+		}
+	}
 }
 
 // NewTransaction starts a new transaction. The resulting transaction object
@@ -275,17 +311,33 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 	return tx, nil
 }
 
-func (d *Datastore) CollectGarbage() error {
+func (d *Datastore) CollectGarbage() (err error) {
 	d.closeLk.RLock()
 	defer d.closeLk.RUnlock()
 	if d.closed {
 		return ErrClosed
 	}
 
-	err := d.DB.RunValueLogGC(d.gcDiscardRatio)
+	gcTimeout := time.After(d.maxGcDuration)
+
+LOOP:
+	for {
+		select {
+		case <-gcTimeout:
+			break LOOP
+		default:
+			if err == nil {
+				err = d.DB.RunValueLogGC(d.gcDiscardRatio)
+			} else {
+				break LOOP
+			}
+		}
+	}
+
 	if err == badger.ErrNoRewrite {
 		err = nil
 	}
+
 	return err
 }
 
