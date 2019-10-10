@@ -59,9 +59,9 @@ var DefaultOptions Options
 
 func init() {
 	DefaultOptions = Options{
-		GcDiscardRatio: 0.5,
+		GcDiscardRatio: 0.2,
 		MaxGcDuration:  1 * time.Minute,
-		GcInterval:     15 * time.Minute,
+		GcInterval:     45 * time.Minute,
 		Options:        badger.DefaultOptions(""),
 	}
 	DefaultOptions.Options.CompactL0OnClose = false
@@ -120,6 +120,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	return ds, nil
 }
 
+// Keep scheduling GC's AFTER `gcInterval` has passed since the previous GC
 func (d *Datastore) periodicGC() {
 	for {
 		select {
@@ -321,6 +322,10 @@ func (d *Datastore) CollectGarbage() (err error) {
 	gcTimeout := time.NewTimer(d.maxGcDuration)
 	defer gcTimeout.Stop()
 
+	// The idea is to keep calling DB.RunValueLogGC() till Badger no longer has any log files
+	// to GC(which would be indicated by an error, please refer to Badger GC docs). The timeout is to
+	// ensure we do not keep calling GC in case Badger has accumulated
+	// excessive garbage. However, we will finish earlier if Badger has nothing left to GC.
 LOOP:
 	for {
 		select {
