@@ -27,7 +27,7 @@ type Datastore struct {
 	closing   chan struct{}
 
 	gcDiscardRatio float64
-	maxGcDuration  time.Duration
+	gcSleep        time.Duration
 	gcInterval     time.Duration
 }
 
@@ -46,10 +46,12 @@ type txn struct {
 type Options struct {
 	// Please refer to the Badger docs to see what this is for
 	GcDiscardRatio float64
-	// Maximum duration to perform a single GC cycle for
-	MaxGcDuration time.Duration
+
 	// Interval between GC cycles
 	GcInterval time.Duration
+
+	// Sleep time between rounds of a single GC cycle.
+	GcSleep time.Duration
 
 	badger.Options
 }
@@ -60,8 +62,8 @@ var DefaultOptions Options
 func init() {
 	DefaultOptions = Options{
 		GcDiscardRatio: 0.2,
-		MaxGcDuration:  1 * time.Minute,
-		GcInterval:     45 * time.Minute,
+		GcInterval:     15 * time.Minute,
+		GcSleep:        10 * time.Second,
 		Options:        badger.DefaultOptions(""),
 	}
 	DefaultOptions.Options.CompactL0OnClose = false
@@ -80,17 +82,17 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
 	var gcDiscardRatio float64
-	var maxGcDuration time.Duration
+	var gcSleep time.Duration
 	var gcInterval time.Duration
 	if options == nil {
 		opt = badger.DefaultOptions("")
 		gcDiscardRatio = DefaultOptions.GcDiscardRatio
-		maxGcDuration = DefaultOptions.MaxGcDuration
+		gcSleep = DefaultOptions.GcSleep
 		gcInterval = DefaultOptions.GcInterval
 	} else {
 		opt = options.Options
 		gcDiscardRatio = options.GcDiscardRatio
-		maxGcDuration = options.MaxGcDuration
+		gcSleep = options.GcSleep
 		gcInterval = options.GcInterval
 	}
 
@@ -110,7 +112,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		DB:             kv,
 		closing:        make(chan struct{}),
 		gcDiscardRatio: gcDiscardRatio,
-		maxGcDuration:  maxGcDuration,
+		gcSleep:        gcSleep,
 		gcInterval:     gcInterval,
 	}
 
@@ -122,11 +124,26 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 
 // Keep scheduling GC's AFTER `gcInterval` has passed since the previous GC
 func (d *Datastore) periodicGC() {
+	gcTimeout := time.NewTimer(d.gcInterval)
+	defer gcTimeout.Stop()
+
 	for {
 		select {
-		case <-time.After(d.gcInterval):
-			if err := d.CollectGarbage(); err != nil {
-				log.Warningf("error during a GC cycle: %s", err)
+		case <-gcTimeout.C:
+			switch err := d.gcOnce(); err {
+			case badger.ErrNoRewrite, badger.ErrRejected:
+				// No rewrite means we've fully garbage collected.
+				// Rejected means someone else is running a GC
+				// or we're closing.
+				gcTimeout.Reset(d.gcInterval)
+			case nil:
+				gcTimeout.Reset(d.gcSleep)
+			case ErrClosed:
+				return
+			default:
+				log.Errorf("error during a GC cycle: %s", err)
+				// Not much we can do on a random error but log it and continue.
+				gcTimeout.Reset(d.gcInterval)
 			}
 		case <-d.closing:
 			return
@@ -313,31 +330,10 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 }
 
 func (d *Datastore) CollectGarbage() (err error) {
-	d.closeLk.RLock()
-	defer d.closeLk.RUnlock()
-	if d.closed {
-		return ErrClosed
-	}
-
-	gcTimeout := time.NewTimer(d.maxGcDuration)
-	defer gcTimeout.Stop()
-
 	// The idea is to keep calling DB.RunValueLogGC() till Badger no longer has any log files
-	// to GC(which would be indicated by an error, please refer to Badger GC docs). The timeout is to
-	// ensure we do not keep calling GC in case Badger has accumulated
-	// excessive garbage. However, we will finish earlier if Badger has nothing left to GC.
-LOOP:
-	for {
-		select {
-		case <-gcTimeout.C:
-			break LOOP
-		default:
-			if err == nil {
-				err = d.DB.RunValueLogGC(d.gcDiscardRatio)
-			} else {
-				break LOOP
-			}
-		}
+	// to GC(which would be indicated by an error, please refer to Badger GC docs).
+	for err == nil {
+		err = d.gcOnce()
 	}
 
 	if err == badger.ErrNoRewrite {
@@ -345,6 +341,15 @@ LOOP:
 	}
 
 	return err
+}
+
+func (d *Datastore) gcOnce() error {
+	d.closeLk.RLock()
+	defer d.closeLk.RUnlock()
+	if d.closed {
+		return ErrClosed
+	}
+	return d.DB.RunValueLogGC(d.gcDiscardRatio)
 }
 
 var _ ds.Datastore = (*txn)(nil)
