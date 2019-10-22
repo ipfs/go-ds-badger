@@ -48,9 +48,14 @@ type Options struct {
 	GcDiscardRatio float64
 
 	// Interval between GC cycles
+	//
+	// If zero, the datastore will perform no automatic garbage collection.
 	GcInterval time.Duration
 
 	// Sleep time between rounds of a single GC cycle.
+	//
+	// If zero, the datastore will only perform one round of GC per
+	// GcInterval.
 	GcSleep time.Duration
 
 	badger.Options
@@ -96,6 +101,12 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		gcInterval = options.GcInterval
 	}
 
+	if gcSleep <= 0 {
+		// If gcSleep is 0, we don't perform multiple rounds of GC per
+		// cycle.
+		gcSleep = gcInterval
+	}
+
 	opt.Dir = path
 	opt.ValueDir = path
 	opt.Logger = log
@@ -116,8 +127,10 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		gcInterval:     gcInterval,
 	}
 
-	// schedule periodic GC till db is closed
-	go ds.periodicGC()
+	// Start the GC process if requested.
+	if ds.gcInterval > 0 {
+		go ds.periodicGC()
+	}
 
 	return ds, nil
 }
