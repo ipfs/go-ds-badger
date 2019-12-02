@@ -29,6 +29,8 @@ type Datastore struct {
 	gcDiscardRatio float64
 	gcSleep        time.Duration
 	gcInterval     time.Duration
+
+	syncWrites bool
 }
 
 // Implements the datastore.Txn interface, enabling transaction support for
@@ -125,6 +127,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 		gcDiscardRatio: gcDiscardRatio,
 		gcSleep:        gcSleep,
 		gcInterval:     gcInterval,
+		syncWrites:     opt.SyncWrites,
 	}
 
 	// Start the GC process if requested.
@@ -198,6 +201,20 @@ func (d *Datastore) Put(key ds.Key, value []byte) error {
 	}
 
 	return txn.commit()
+}
+
+func (d *Datastore) Sync(prefix ds.Key) error {
+	d.closeLk.RLock()
+	defer d.closeLk.RUnlock()
+	if d.closed {
+		return ErrClosed
+	}
+
+	if d.syncWrites {
+		return nil
+	}
+
+	return d.DB.Sync()
 }
 
 func (d *Datastore) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
@@ -379,6 +396,16 @@ func (t *txn) Put(key ds.Key, value []byte) error {
 
 func (t *txn) put(key ds.Key, value []byte) error {
 	return t.txn.Set(key.Bytes(), value)
+}
+
+func (t *txn) Sync(prefix ds.Key) error {
+	t.ds.closeLk.RLock()
+	defer t.ds.closeLk.RUnlock()
+	if t.ds.closed {
+		return ErrClosed
+	}
+
+	return nil
 }
 
 func (t *txn) PutWithTTL(key ds.Key, value []byte, ttl time.Duration) error {
