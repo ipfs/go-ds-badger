@@ -618,7 +618,11 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 			matches := true
 			check := func(value []byte) error {
-				e := dsq.Entry{Key: string(item.Key()), Value: value, Size:len(value)}
+				e := dsq.Entry{
+					Key:   string(item.Key()),
+					Value: value,
+					Size:  int(item.ValueSize()), // this function is basically free
+				}
 
 				// Only calculate expirations if we need them.
 				if q.ReturnExpirations {
