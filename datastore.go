@@ -555,7 +555,10 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
-	opt.Prefix = []byte(q.Prefix)
+	prefix := ds.NewKey(q.Prefix).String()
+	if prefix != "/" {
+		opt.Prefix = []byte(prefix + "/")
+	}
 
 	// Handle ordering
 	if len(q.Orders) > 0 {
