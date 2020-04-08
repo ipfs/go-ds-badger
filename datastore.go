@@ -342,6 +342,9 @@ func (d *Datastore) Delete(key ds.Key) error {
 func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
 	d.closeLk.RLock()
 	defer d.closeLk.RUnlock()
+	if d.closed {
+		return nil, ErrClosed
+	}
 
 	txn := d.newImplicitTransaction(true)
 	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
