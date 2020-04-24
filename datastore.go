@@ -15,6 +15,8 @@ import (
 	goprocess "github.com/jbenet/goprocess"
 )
 
+// badgerLog is a local wrapper for go-log to make the interface
+// compatible with badger.Logger (namely, aliasing Warnf to Warningf)
 type badgerLog struct {
 	logger.ZapEventLogger
 }
@@ -23,7 +25,7 @@ func (b *badgerLog) Warningf(format string, args ...interface{}) {
 	b.Warnf(format, args...)
 }
 
-var log = &badgerLog{*logger.Logger("badger")}
+var log = logger.Logger("badger")
 
 var ErrClosed = errors.New("datastore closed")
 
@@ -140,7 +142,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 
 	opt.Dir = path
 	opt.ValueDir = path
-	opt.Logger = log
+	opt.Logger = &badgerLog{*log}
 
 	kv, err := badger.Open(opt)
 	if err != nil {
