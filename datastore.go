@@ -11,11 +11,19 @@ import (
 	options "github.com/dgraph-io/badger/options"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	logger "github.com/ipfs/go-log"
+	logger "github.com/ipfs/go-log/v2"
 	goprocess "github.com/jbenet/goprocess"
 )
 
-var log = logger.Logger("badger")
+type badgerLog struct {
+	logger.ZapEventLogger
+}
+
+func (b *badgerLog) Warningf(format string, args ...interface{}) {
+	b.Warnf(format, args...)
+}
+
+var log = &badgerLog{*logger.Logger("badger")}
 
 var ErrClosed = errors.New("datastore closed")
 
