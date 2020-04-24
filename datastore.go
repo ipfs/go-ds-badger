@@ -11,9 +11,19 @@ import (
 	options "github.com/dgraph-io/badger/options"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	logger "github.com/ipfs/go-log"
+	logger "github.com/ipfs/go-log/v2"
 	goprocess "github.com/jbenet/goprocess"
 )
+
+// badgerLog is a local wrapper for go-log to make the interface
+// compatible with badger.Logger (namely, aliasing Warnf to Warningf)
+type badgerLog struct {
+	logger.ZapEventLogger
+}
+
+func (b *badgerLog) Warningf(format string, args ...interface{}) {
+	b.Warnf(format, args...)
+}
 
 var log = logger.Logger("badger")
 
@@ -132,7 +142,7 @@ func NewDatastore(path string, options *Options) (*Datastore, error) {
 
 	opt.Dir = path
 	opt.ValueDir = path
-	opt.Logger = log
+	opt.Logger = &badgerLog{*log}
 
 	kv, err := badger.Open(opt)
 	if err != nil {
