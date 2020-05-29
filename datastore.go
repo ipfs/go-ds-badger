@@ -79,15 +79,25 @@ var DefaultOptions Options
 
 func init() {
 	DefaultOptions = Options{
-		GcDiscardRatio: 0.2,
+		GcDiscardRatio: 0.01,
 		GcInterval:     15 * time.Minute,
 		GcSleep:        10 * time.Second,
 		Options:        badger.LSMOnlyOptions(""),
 	}
-	// This is to optimize the database on close so it can be opened
-	// read-only and efficiently queried. We don't do that and hanging on
-	// stop isn't nice.
-	DefaultOptions.Options.CompactL0OnClose = false
+	// This is to optimize the database on closure
+	DefaultOptions.Options.CompactL0OnClose = true
+	
+	// Remove elements which the has been deleted from the database
+	DefaultOptions.Options.NumVersionsToKeep = 0
+	
+	// Reduce the number of zero tables (which are hold in memory)
+	DefaultOptions.Options.NumLevelZeroTables = 1
+	
+	// Reduce the number of zero tables which are stalled
+	DefaultOptions.Options.NumLevelZeroTablesStall = 2
+	
+	// Reduce the max vlog size usage after compaction (
+	DefaultOptions.Options.ValueLogFileSize = 10485760
 
 	// The alternative is "crash on start and tell the user to fix it". This
 	// will truncate corrupt and unsynced data, which we don't guarantee to
