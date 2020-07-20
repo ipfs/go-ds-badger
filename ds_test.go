@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -48,17 +49,17 @@ func newDS(t *testing.T) (*Datastore, func()) {
 	}
 }
 
-func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
+func addTestCases(t *testing.T, ctx context.Context, d *Datastore, testcases map[string]string) {
 	for k, v := range testcases {
 		dsk := ds.NewKey(k)
-		if err := d.Put(dsk, []byte(v)); err != nil {
+		if err := d.Put(ctx, dsk, []byte(v)); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	for k, v := range testcases {
 		dsk := ds.NewKey(k)
-		v2, err := d.Get(dsk)
+		v2, err := d.Get(ctx, dsk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,12 +69,14 @@ func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
 	}
 }
 func TestQuery(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 
-	rs, err := d.Query(dsq.Query{Prefix: "/a/"})
+	rs, err := d.Query(ctx, dsq.Query{Prefix: "/a/"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +91,7 @@ func TestQuery(t *testing.T) {
 
 	// test offset and limit
 
-	rs, err = d.Query(dsq.Query{Prefix: "/a/", Offset: 2, Limit: 2})
+	rs, err = d.Query(ctx, dsq.Query{Prefix: "/a/", Offset: 2, Limit: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,11 +103,13 @@ func TestQuery(t *testing.T) {
 }
 
 func TestHas(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 
-	has, err := d.Has(ds.NewKey("/a/b/c"))
+	has, err := d.Has(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -113,7 +118,7 @@ func TestHas(t *testing.T) {
 		t.Error("Key should be found")
 	}
 
-	has, err = d.Has(ds.NewKey("/a/b/c/d"))
+	has, err = d.Has(ctx, ds.NewKey("/a/b/c/d"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -124,11 +129,13 @@ func TestHas(t *testing.T) {
 }
 
 func TestGetSize(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 
-	size, err := d.GetSize(ds.NewKey("/a/b/c"))
+	size, err := d.GetSize(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,18 +144,20 @@ func TestGetSize(t *testing.T) {
 		t.Error("")
 	}
 
-	_, err = d.GetSize(ds.NewKey("/a/b/c/d"))
+	_, err = d.GetSize(ctx, ds.NewKey("/a/b/c/d"))
 	if err != ds.ErrNotFound {
 		t.Error(err)
 	}
 }
 
 func TestNotExistGet(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 
-	has, err := d.Has(ds.NewKey("/a/b/c/d"))
+	has, err := d.Has(ctx, ds.NewKey("/a/b/c/d"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -157,7 +166,7 @@ func TestNotExistGet(t *testing.T) {
 		t.Error("Key should not be found")
 	}
 
-	val, err := d.Get(ds.NewKey("/a/b/c/d"))
+	val, err := d.Get(ctx, ds.NewKey("/a/b/c/d"))
 	if val != nil {
 		t.Error("Key should not be found")
 	}
@@ -171,11 +180,13 @@ func TestNotExistGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 
-	has, err := d.Has(ds.NewKey("/a/b/c"))
+	has, err := d.Has(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -183,12 +194,12 @@ func TestDelete(t *testing.T) {
 		t.Error("Key should be found")
 	}
 
-	err = d.Delete(ds.NewKey("/a/b/c"))
+	err = d.Delete(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Error(err)
 	}
 
-	has, err = d.Has(ds.NewKey("/a/b/c"))
+	has, err = d.Has(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -198,15 +209,17 @@ func TestDelete(t *testing.T) {
 }
 
 func TestGetEmpty(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
-	err := d.Put(ds.NewKey("/a"), []byte{})
+	err := d.Put(ctx, ds.NewKey("/a"), []byte{})
 	if err != nil {
 		t.Error(err)
 	}
 
-	v, err := d.Get(ds.NewKey("/a"))
+	v, err := d.Get(ctx, ds.NewKey("/a"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -239,6 +252,8 @@ func expectMatches(t *testing.T, expect []string, actualR dsq.Results) {
 }
 
 func TestBatching(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
@@ -248,19 +263,19 @@ func TestBatching(t *testing.T) {
 	}
 
 	for k, v := range testcases {
-		err := b.Put(ds.NewKey(k), []byte(v))
+		err := b.Put(ctx, ds.NewKey(k), []byte(v))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err = b.Commit()
+	err = b.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for k, v := range testcases {
-		val, err := d.Get(ds.NewKey(k))
+		val, err := d.Get(ctx, ds.NewKey(k))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -277,22 +292,22 @@ func TestBatching(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = b.Delete(ds.NewKey("/a/b"))
+	err = b.Delete(ctx, ds.NewKey("/a/b"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = b.Delete(ds.NewKey("/a/b/c"))
+	err = b.Delete(ctx, ds.NewKey("/a/b/c"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = b.Commit()
+	err = b.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rs, err := d.Query(dsq.Query{Prefix: "/"})
+	rs, err := d.Query(ctx, dsq.Query{Prefix: "/"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,18 +327,20 @@ func TestBatching(t *testing.T) {
 // Tests from basic_tests from go-datastore
 
 func TestBasicPutGet(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
 	k := ds.NewKey("foo")
 	val := []byte("Hello Datastore!")
 
-	err := d.Put(k, val)
+	err := d.Put(ctx, k, val)
 	if err != nil {
 		t.Fatal("error putting to datastore: ", err)
 	}
 
-	have, err := d.Has(k)
+	have, err := d.Has(ctx, k)
 	if err != nil {
 		t.Fatal("error calling has on key we just put: ", err)
 	}
@@ -332,7 +349,7 @@ func TestBasicPutGet(t *testing.T) {
 		t.Fatal("should have key foo, has returned false")
 	}
 
-	out, err := d.Get(k)
+	out, err := d.Get(ctx, k)
 	if err != nil {
 		t.Fatal("error getting value after put: ", err)
 	}
@@ -341,7 +358,7 @@ func TestBasicPutGet(t *testing.T) {
 		t.Fatal("value received on get wasnt what we expected:", out)
 	}
 
-	have, err = d.Has(k)
+	have, err = d.Has(ctx, k)
 	if err != nil {
 		t.Fatal("error calling has after get: ", err)
 	}
@@ -350,12 +367,12 @@ func TestBasicPutGet(t *testing.T) {
 		t.Fatal("should have key foo, has returned false")
 	}
 
-	err = d.Delete(k)
+	err = d.Delete(ctx, k)
 	if err != nil {
 		t.Fatal("error calling delete: ", err)
 	}
 
-	have, err = d.Has(k)
+	have, err = d.Has(ctx, k)
 	if err != nil {
 		t.Fatal("error calling has after delete: ", err)
 	}
@@ -366,12 +383,14 @@ func TestBasicPutGet(t *testing.T) {
 }
 
 func TestNotFounds(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
 	badk := ds.NewKey("notreal")
 
-	val, err := d.Get(badk)
+	val, err := d.Get(ctx, badk)
 	if err != ds.ErrNotFound {
 		t.Fatal("expected ErrNotFound for key that doesnt exist, got: ", err)
 	}
@@ -380,7 +399,7 @@ func TestNotFounds(t *testing.T) {
 		t.Fatal("get should always return nil for not found values")
 	}
 
-	have, err := d.Has(badk)
+	have, err := d.Has(ctx, badk)
 	if err != nil {
 		t.Fatal("error calling has on not found key: ", err)
 	}
@@ -390,6 +409,8 @@ func TestNotFounds(t *testing.T) {
 }
 
 func TestManyKeysAndQuery(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
@@ -409,7 +430,7 @@ func TestManyKeysAndQuery(t *testing.T) {
 
 	t.Logf("putting %d values", count)
 	for i, k := range keys {
-		err := d.Put(k, values[i])
+		err := d.Put(ctx, k, values[i])
 		if err != nil {
 			t.Fatalf("error on put[%d]: %s", i, err)
 		}
@@ -417,7 +438,7 @@ func TestManyKeysAndQuery(t *testing.T) {
 
 	t.Log("getting values back")
 	for i, k := range keys {
-		val, err := d.Get(k)
+		val, err := d.Get(ctx, k)
 		if err != nil {
 			t.Fatalf("error on get[%d]: %s", i, err)
 		}
@@ -429,7 +450,7 @@ func TestManyKeysAndQuery(t *testing.T) {
 
 	t.Log("querying values")
 	q := dsq.Query{KeysOnly: true}
-	resp, err := d.Query(q)
+	resp, err := d.Query(ctx, q)
 	if err != nil {
 		t.Fatal("calling query: ", err)
 	}
@@ -464,13 +485,15 @@ func TestManyKeysAndQuery(t *testing.T) {
 
 	t.Log("deleting all keys")
 	for _, k := range keys {
-		if err := d.Delete(k); err != nil {
+		if err := d.Delete(ctx, k); err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 
 func TestGC(t *testing.T) {
+	ctx := context.Background()
+
 	d, done := newDS(t)
 	defer done()
 
@@ -485,13 +508,13 @@ func TestGC(t *testing.T) {
 	for i := 0; i < count; i++ {
 		buf := make([]byte, 6400)
 		rand.Read(buf)
-		err = b.Put(ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
+		err = b.Put(ctx, ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err = b.Commit()
+	err = b.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -503,13 +526,13 @@ func TestGC(t *testing.T) {
 
 	t.Logf("deleting %d values", count)
 	for i := 0; i < count; i++ {
-		err := b.Delete(ds.NewKey(fmt.Sprintf("/key%d", i)))
+		err := b.Delete(ctx, ds.NewKey(fmt.Sprintf("/key%d", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err = b.Commit()
+	err = b.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,6 +547,8 @@ func TestGC(t *testing.T) {
 // this interval is not configurable, we re-open the database
 // (the size is always calculated on Open) to make things quick.
 func TestDiskUsage(t *testing.T) {
+	ctx := context.Background()
+
 	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -538,7 +563,7 @@ func TestDiskUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addTestCases(t, d, testcases)
+	addTestCases(t, ctx, d, testcases)
 	d.Close()
 
 	d, err = NewDatastore(path, nil)
@@ -553,6 +578,8 @@ func TestDiskUsage(t *testing.T) {
 }
 
 func TestTxnDiscard(t *testing.T) {
+	ctx := context.Background()
+
 	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -570,11 +597,11 @@ func TestTxnDiscard(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := ds.NewKey("/test/thing")
-	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+	if err := txn.Put(ctx, key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
 	}
-	txn.Discard()
-	has, err := d.Has(key)
+	txn.Discard(ctx)
+	has, err := d.Has(ctx, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,6 +613,8 @@ func TestTxnDiscard(t *testing.T) {
 }
 
 func TestTxnCommit(t *testing.T) {
+	ctx := context.Background()
+
 	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -602,14 +631,14 @@ func TestTxnCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := ds.NewKey("/test/thing")
-	if err := txn.Put(key, []byte{1, 2, 3}); err != nil {
+	if err := txn.Put(ctx, key, []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
 	}
-	err = txn.Commit()
+	err = txn.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	has, err := d.Has(key)
+	has, err := d.Has(ctx, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,6 +650,8 @@ func TestTxnCommit(t *testing.T) {
 }
 
 func TestTxnBatch(t *testing.T) {
+	ctx := context.Background()
+
 	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -646,18 +677,18 @@ func TestTxnBatch(t *testing.T) {
 		}
 		data[key] = bytes
 
-		err = txn.Put(key, bytes)
+		err = txn.Put(ctx, key, bytes)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	err = txn.Commit()
+	err = txn.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for key, bytes := range data {
-		retrieved, err := d.Get(key)
+		retrieved, err := d.Get(ctx, key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -675,6 +706,8 @@ func TestTxnBatch(t *testing.T) {
 }
 
 func TestTTL(t *testing.T) {
+	ctx := context.Background()
+
 	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
 	if err != nil {
 		t.Fatal(err)
@@ -709,7 +742,7 @@ func TestTTL(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	err = txn.Commit()
+	err = txn.Commit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -719,17 +752,17 @@ func TestTTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	for key := range data {
-		_, err := txn.Get(key)
+		_, err := txn.Get(ctx, key)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	txn.Discard()
+	txn.Discard(ctx)
 
 	time.Sleep(time.Second)
 
 	for key := range data {
-		has, err := d.Has(key)
+		has, err := d.Has(ctx, key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -742,6 +775,8 @@ func TestTTL(t *testing.T) {
 }
 
 func TestExpirations(t *testing.T) {
+	ctx := context.Background()
+
 	var err error
 
 	d, done := newDS(t)
@@ -752,7 +787,7 @@ func TestExpirations(t *testing.T) {
 		t.Fatal(err)
 	}
 	ttltxn := txn.(ds.TTL)
-	defer txn.Discard()
+	defer txn.Discard(ctx)
 
 	key := ds.NewKey("/abc/def")
 	val := make([]byte, 32)
@@ -768,7 +803,7 @@ func TestExpirations(t *testing.T) {
 		t.Fatalf("adding with ttl failed: %v", err)
 	}
 
-	if err = txn.Commit(); err != nil {
+	if err = txn.Commit(ctx); err != nil {
 		t.Fatalf("commiting transaction failed: %v", err)
 	}
 
@@ -778,7 +813,7 @@ func TestExpirations(t *testing.T) {
 		t.Fatal(err)
 	}
 	ttltxn = txn.(ds.TTL)
-	defer txn.Discard()
+	defer txn.Discard(ctx)
 
 	// GetExpiration returns expected value.
 	var dsExp time.Time
@@ -796,7 +831,7 @@ func TestExpirations(t *testing.T) {
 		KeysOnly:          true,
 	}
 	var ress dsq.Results
-	if ress, err = txn.Query(q); err != nil {
+	if ress, err = txn.Query(ctx, q); err != nil {
 		t.Fatalf("querying datastore failed: %v", err)
 	}
 
