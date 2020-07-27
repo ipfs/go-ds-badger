@@ -1,5 +1,7 @@
 module github.com/ipfs/go-ds-badger
 
+replace github.com/ipfs/go-datastore => ../go-datastore
+
 require (
 	github.com/dgraph-io/badger v1.6.1
 	github.com/ipfs/go-datastore v0.4.4
