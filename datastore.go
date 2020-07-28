@@ -666,6 +666,11 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 		// All iterators must be started by rewinding.
 		it.Rewind()
 
+		// Seek to seek prefix if needed.
+		if q.SeekPrefix != "" {
+			it.Seek([]byte(q.SeekPrefix))
+		}
+
 		// skip to the offset
 		for skipped := 0; skipped < q.Offset && it.Valid(); it.Next() {
 			// On the happy path, we have no filters and we can go
