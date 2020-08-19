@@ -70,8 +70,8 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
-github.com/textileio/go-datastore v0.4.5-0.20200728205504-ffeb3591b248 h1:X4S0Y+yX1eZB1wx8Vm4spdGoSgCgPQJB5iuSY2hECXo=
-github.com/textileio/go-datastore v0.4.5-0.20200728205504-ffeb3591b248/go.mod h1:eXTcaaiN6uOlVCLS9GjJUJtlvJfM3xk23w3fyfrmmJs=
+github.com/textileio/go-datastore v0.4.5-0.20200819232101-baa577bf9422 h1:DNpznzcn7pd1Cn2fdKHfPPw62r8Ii4DGVnQRu9Jbvok=
+github.com/textileio/go-datastore v0.4.5-0.20200819232101-baa577bf9422/go.mod h1:/38mp5DMgxCZrb5wpgPlWGXuZ99/ur8wgHDSXU5zCjU=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 go.uber.org/atomic v1.6.0 h1:Ezj3JGmsOnG1MoRWQkPBsKLe9DwWD9QeXzTRzzldNVk=

@@ -9,8 +9,8 @@ import (
 
 	badger "github.com/dgraph-io/badger"
 	options "github.com/dgraph-io/badger/options"
-	ds "github.com/ipfs/go-datastore"
-	dsq "github.com/ipfs/go-datastore/query"
+	ds "github.com/textileio/go-datastore"
+	dsq "github.com/textileio/go-datastore/query"
 	logger "github.com/ipfs/go-log/v2"
 	goprocess "github.com/jbenet/goprocess"
 )
