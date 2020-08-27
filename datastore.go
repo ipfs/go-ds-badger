@@ -9,10 +9,11 @@ import (
 
 	badger "github.com/dgraph-io/badger"
 	options "github.com/dgraph-io/badger/options"
-	ds "github.com/textileio/go-datastore"
-	dsq "github.com/textileio/go-datastore/query"
+	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
 	logger "github.com/ipfs/go-log/v2"
 	goprocess "github.com/jbenet/goprocess"
+	dsextensions "github.com/textileio/go-datastore-extensions"
 )
 
 // badgerLog is a local wrapper for go-log to make the interface
@@ -112,6 +113,7 @@ var _ ds.Datastore = (*Datastore)(nil)
 var _ ds.TxnDatastore = (*Datastore)(nil)
 var _ ds.TTLDatastore = (*Datastore)(nil)
 var _ ds.GCDatastore = (*Datastore)(nil)
+var _ dsextensions.ExtendedDatastore = (*Datastore)(nil)
 
 // NewDatastore creates a new badger datastore.
 //
@@ -360,6 +362,23 @@ func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
 	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
 	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
 	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
+
+	qe := dsextensions.QueryExt{Query: q}
+	return txn.query(qe)
+}
+
+func (d *Datastore) QueryExtended(q dsextensions.QueryExt) (dsq.Results, error) {
+	d.closeLk.RLock()
+	defer d.closeLk.RUnlock()
+	if d.closed {
+		return nil, ErrClosed
+	}
+
+	txn := d.newImplicitTransaction(true)
+	// We cannot defer txn.Discard() here, as the txn must remain active while the iterator is open.
+	// https://github.com/dgraph-io/badger/commit/b1ad1e93e483bbfef123793ceedc9a7e34b09f79
+	// The closing logic in the query goprocess takes care of discarding the implicit transaction.
+
 	return txn.query(q)
 }
 
@@ -583,10 +602,11 @@ func (t *txn) Query(q dsq.Query) (dsq.Results, error) {
 		return nil, ErrClosed
 	}
 
-	return t.query(q)
+	qe := dsextensions.QueryExt{Query: q}
+	return t.query(qe)
 }
 
-func (t *txn) query(q dsq.Query) (dsq.Results, error) {
+func (t *txn) query(q dsextensions.QueryExt) (dsq.Results, error) {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = !q.KeysOnly
 	prefix := ds.NewKey(q.Prefix).String()
@@ -620,10 +640,10 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			}
 
 			// fix the query
-			res = dsq.ResultsReplaceQuery(res, q)
+			res = dsq.ResultsReplaceQuery(res, q.Query)
 
 			// Remove the parts we've already applied.
-			naiveQuery := q
+			naiveQuery := q.Query
 			naiveQuery.Prefix = ""
 			naiveQuery.Filters = nil
 
@@ -633,7 +653,7 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	}
 
 	it := t.txn.NewIterator(opt)
-	qrb := dsq.NewResultBuilder(q)
+	qrb := dsq.NewResultBuilder(q.Query)
 	qrb.Process.Go(func(worker goprocess.Process) {
 		t.ds.closeLk.RLock()
 		closedEarly := false

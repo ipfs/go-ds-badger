@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	ds "github.com/textileio/go-datastore"
-	dsq "github.com/textileio/go-datastore/query"
-	dstest "github.com/textileio/go-datastore/test"
+	ds "github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
+	dstest "github.com/ipfs/go-datastore/test"
 )
 
 var testcases = map[string]string{
