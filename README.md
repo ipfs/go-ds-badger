@@ -16,12 +16,17 @@
 ## Table of Contents
 
 - [Documentation](#documentation)
+- [Badger2](#badger2)
 - [Contribute](#contribute)
 - [License](#license)
 
 ## Documentation
 
 https://godoc.org/github.com/ipfs/go-ds-badger
+
+## Badger2
+
+This repo contains a datastore implementation using Badger v1. If you are looking for a Badger v2 datastore check out https://github.com/ipfs/go-ds-badger2.
 
 ## Contribute
 
