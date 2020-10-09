@@ -309,6 +309,71 @@ func TestBatching(t *testing.T) {
 
 }
 
+func TestBatchingRequired(t *testing.T) {
+	path, err := ioutil.TempDir(os.TempDir(), "testing_badger_")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dsOpts := DefaultOptions
+	d, err := NewDatastore(path, &dsOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		d.Close()
+		os.RemoveAll(path)
+	}()
+
+	const valSize = 1000
+
+	// Check that transaction fails when there are too many writes.  This is
+	// not testing batching logic, but is here to prove that batching works
+	// where a transaction fails.
+	t.Logf("putting %d byte values until transaction overflows", valSize)
+	tx, err := d.NewTransaction(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var puts int
+	for ; puts < 10000000; puts++ {
+		buf := make([]byte, valSize)
+		rand.Read(buf)
+		err = tx.Put(ds.NewKey(fmt.Sprintf("/key%d", puts)), buf)
+		if err != nil {
+			break
+		}
+		puts++
+	}
+	if err == nil {
+		t.Error("expected transaction to fail")
+	} else {
+		t.Logf("OK - transaction cannot handle %d puts: %s", puts, err)
+	}
+	tx.Discard()
+
+	// Check that batch succeeds with the same number of writes that caused a
+	// transaction to fail.
+	t.Logf("putting %d %d byte values using batch", puts, valSize)
+	b, err := d.Batch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < puts; i++ {
+		buf := make([]byte, valSize)
+		rand.Read(buf)
+		err = b.Put(ds.NewKey(fmt.Sprintf("/key%d", i)), buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = b.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Tests from basic_tests from go-datastore
 
 func TestBasicPutGet(t *testing.T) {
