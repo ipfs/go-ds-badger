@@ -322,7 +322,10 @@ func TestBatching(t *testing.T) {
 	}
 
 	// TODO: remove type assertion once datastore.Batch interface has Cancel
-	b.(*batch).Cancel()
+	err = b.(*batch).Cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = d.Get(ds.NewKey(key))
 	if err == nil {
