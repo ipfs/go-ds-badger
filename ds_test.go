@@ -307,6 +307,30 @@ func TestBatching(t *testing.T) {
 		"/g",
 	}, rs)
 
+	//Test cancel
+
+	b, err = d.Batch()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const key = "/xyz"
+
+	err = b.Put(ds.NewKey(key), []byte("/x/y/z"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO: remove type assertion once datastore.Batch interface has Cancel
+	err = b.(*batch).Cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = d.Get(ds.NewKey(key))
+	if err == nil {
+		t.Fatal("expected error trying to get uncommited data")
+	}
 }
 
 func TestBatchingRequired(t *testing.T) {
