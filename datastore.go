@@ -409,7 +409,10 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 	b := &batch{d, d.DB.NewWriteBatch()}
 	// Ensure that incomplete transaction resources are cleaned up in case
 	// batch is abandoned.
-	runtime.SetFinalizer(b, func(b *batch) { b.cancel() })
+	runtime.SetFinalizer(b, func(b *batch) {
+		b.cancel()
+		log.Error("batch not committed or canceled")
+	})
 
 	return b, nil
 }
@@ -481,8 +484,10 @@ func (b *batch) commit() error {
 	if err != nil {
 		// Discard incomplete transaction held by b.writeBatch
 		b.cancel()
+		return err
 	}
-	return err
+	runtime.SetFinalizer(b, nil)
+	return nil
 }
 
 func (b *batch) Cancel() error {
@@ -498,6 +503,7 @@ func (b *batch) Cancel() error {
 
 func (b *batch) cancel() {
 	b.writeBatch.Cancel()
+	runtime.SetFinalizer(b, nil)
 }
 
 var _ ds.Datastore = (*txn)(nil)
