@@ -481,8 +481,10 @@ func (b *batch) commit() error {
 	if err != nil {
 		// Discard incomplete transaction held by b.writeBatch
 		b.cancel()
+		return err
 	}
-	return err
+	runtime.SetFinalizer(b, nil)
+	return nil
 }
 
 func (b *batch) Cancel() error {
@@ -498,6 +500,7 @@ func (b *batch) Cancel() error {
 
 func (b *batch) cancel() {
 	b.writeBatch.Cancel()
+	runtime.SetFinalizer(b, nil)
 }
 
 var _ ds.Datastore = (*txn)(nil)
