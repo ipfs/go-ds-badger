@@ -3,6 +3,7 @@ package badger
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -398,11 +399,6 @@ func (d *Datastore) Close() error {
 
 // Batch creats a new Batch object. This provides a way to do many writes, when
 // there may be too many to fit into a single transaction.
-//
-// After writing to a Batch, always call Commit whether or not writing to the
-// batch was completed successfully or not.  This is necessary to flush any
-// remaining data and free any resources associated with an incomplete
-// transaction.
 func (d *Datastore) Batch() (ds.Batch, error) {
 	d.closeLk.RLock()
 	defer d.closeLk.RUnlock()
@@ -410,7 +406,12 @@ func (d *Datastore) Batch() (ds.Batch, error) {
 		return nil, ErrClosed
 	}
 
-	return &batch{d, d.DB.NewWriteBatch()}, nil
+	b := &batch{d, d.DB.NewWriteBatch()}
+	// Ensure that incomplete transaction resources are cleaned up in case
+	// batch is abandoned.
+	runtime.SetFinalizer(b, func(b *batch) { b.cancel() })
+
+	return b, nil
 }
 
 func (d *Datastore) CollectGarbage() (err error) {
@@ -479,9 +480,24 @@ func (b *batch) commit() error {
 	err := b.writeBatch.Flush()
 	if err != nil {
 		// Discard incomplete transaction held by b.writeBatch
-		b.writeBatch.Cancel()
+		b.cancel()
 	}
 	return err
+}
+
+func (b *batch) Cancel() error {
+	b.ds.closeLk.RLock()
+	defer b.ds.closeLk.RUnlock()
+	if b.ds.closed {
+		return ErrClosed
+	}
+
+	b.cancel()
+	return nil
+}
+
+func (b *batch) cancel() {
+	b.writeBatch.Cancel()
 }
 
 var _ ds.Datastore = (*txn)(nil)
