@@ -437,6 +437,8 @@ func (d *Datastore) gcOnce() error {
 	if d.closed {
 		return ErrClosed
 	}
+	log.Info("Running GC round")
+	defer log.Info("Finished running GC round")
 	return d.DB.RunValueLogGC(d.gcDiscardRatio)
 }
 
