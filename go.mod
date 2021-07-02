@@ -7,4 +7,4 @@ require (
 	github.com/jbenet/goprocess v0.1.4
 )
 
-go 1.13
+go 1.15
