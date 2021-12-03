@@ -118,7 +118,9 @@ func init() {
 }
 
 var _ ds.Datastore = (*Datastore)(nil)
+var _ ds.PersistentDatastore = (*Datastore)(nil)
 var _ ds.TxnDatastore = (*Datastore)(nil)
+var _ ds.Txn = (*txn)(nil)
 var _ ds.TTLDatastore = (*Datastore)(nil)
 var _ ds.GCDatastore = (*Datastore)(nil)
 var _ ds.Batching = (*Datastore)(nil)
