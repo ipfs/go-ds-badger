@@ -15,4 +15,4 @@ concurrency:
 
 jobs:
   go-check:
-    uses: pl-strflt/uci/.github/workflows/go-check.yml@install-get
+    uses: pl-strflt/uci/.github/workflows/go-check.yml@v0.0
