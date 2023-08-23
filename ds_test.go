@@ -638,7 +638,7 @@ func TestDiskUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	s, _ := d.DiskUsage(bg)
-	if s <= 0 {
+	if s == 0 {
 		t.Error("expected some size")
 	}
 	d.Close()

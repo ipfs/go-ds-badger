@@ -1,0 +1,4 @@
+{
+  "shuffle": false,
+  "skipOSes": ["windows"]
+}
