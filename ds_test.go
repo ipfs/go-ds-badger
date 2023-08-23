@@ -3,8 +3,8 @@ package badger
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"sort"
 	"testing"
