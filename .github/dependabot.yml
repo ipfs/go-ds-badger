@@ -1,0 +1,13 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: weekly
+    time: "11:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: github.com/ipfs/go-log/v2
+    versions:
+    - 2.1.1
+    - 2.1.2
