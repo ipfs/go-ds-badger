@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -107,8 +108,12 @@ func init() {
 	// reading (in some tests).
 	DefaultOptions.Options.ValueLogLoadingMode = options.FileIO
 
-	// Explicitly set this to mmap. This doesn't use much memory anyways.
-	DefaultOptions.Options.TableLoadingMode = options.MemoryMap
+	if os.Getenv("GOARCH") == "386" {
+		DefaultOptions.Options.TableLoadingMode = options.FileIO
+	} else {
+		// Explicitly set this to mmap. This doesn't use much memory anyways.
+		DefaultOptions.Options.TableLoadingMode = options.MemoryMap
+	}
 
 	// Reduce this from 64MiB to 16MiB. That means badger will hold on to
 	// 20MiB by default instead of 80MiB.

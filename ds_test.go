@@ -5,12 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 	"time"
 
-	options "github.com/dgraph-io/badger/options"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	dstest "github.com/ipfs/go-datastore/test"
@@ -634,11 +632,7 @@ func TestDiskUsage(t *testing.T) {
 	addTestCases(t, d, testcases)
 	d.Close()
 
-	dsOpts := DefaultOptions
-	if os.Getenv("GOARCH") == "386" {
-		dsOpts.Options.TableLoadingMode = options.FileIO
-	}
-	d, err = NewDatastore(path, &dsOpts)
+	d, err = NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
