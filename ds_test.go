@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 	"time"
@@ -29,27 +28,6 @@ var testcases = map[string]string{
 	"/g":     "",
 }
 
-// returns datastore, and a function to call on exit.
-// (this garbage collects). So:
-//
-//	d, close := newDS(t)
-//	defer close()
-func newDS(t *testing.T) (*Datastore, func()) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	d, err := NewDatastore(path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return d, func() {
-		d.Close()
-		os.RemoveAll(path)
-	}
-}
-
 func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
 	for k, v := range testcases {
 		dsk := ds.NewKey(k)
@@ -70,8 +48,11 @@ func addTestCases(t *testing.T, d *Datastore, testcases map[string]string) {
 	}
 }
 func TestQuery(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	addTestCases(t, d, testcases)
 
@@ -102,8 +83,12 @@ func TestQuery(t *testing.T) {
 }
 
 func TestHas(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
 	addTestCases(t, d, testcases)
 
 	has, err := d.Has(bg, ds.NewKey("/a/b/c"))
@@ -126,8 +111,12 @@ func TestHas(t *testing.T) {
 }
 
 func TestGetSize(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
 	addTestCases(t, d, testcases)
 
 	size, err := d.GetSize(bg, ds.NewKey("/a/b/c"))
@@ -146,8 +135,12 @@ func TestGetSize(t *testing.T) {
 }
 
 func TestNotExistGet(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
 	addTestCases(t, d, testcases)
 
 	has, err := d.Has(bg, ds.NewKey("/a/b/c/d"))
@@ -173,8 +166,12 @@ func TestNotExistGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
 	addTestCases(t, d, testcases)
 
 	has, err := d.Has(bg, ds.NewKey("/a/b/c"))
@@ -200,10 +197,13 @@ func TestDelete(t *testing.T) {
 }
 
 func TestGetEmpty(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
-	err := d.Put(bg, ds.NewKey("/a"), []byte{})
+	err = d.Put(bg, ds.NewKey("/a"), []byte{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -241,8 +241,11 @@ func expectMatches(t *testing.T, expect []string, actualR dsq.Results) {
 }
 
 func TestBatching(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	b, err := d.Batch(bg)
 	if err != nil {
@@ -336,20 +339,12 @@ func TestBatching(t *testing.T) {
 }
 
 func TestBatchingRequired(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dsOpts := DefaultOptions
-	d, err := NewDatastore(path, &dsOpts)
+	d, err := NewDatastore(t.TempDir(), &dsOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		d.Close()
-		os.RemoveAll(path)
-	}()
+	defer d.Close()
 
 	const valSize = 1000
 
@@ -403,13 +398,16 @@ func TestBatchingRequired(t *testing.T) {
 // Tests from basic_tests from go-datastore
 
 func TestBasicPutGet(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	k := ds.NewKey("foo")
 	val := []byte("Hello Datastore!")
 
-	err := d.Put(bg, k, val)
+	err = d.Put(bg, k, val)
 	if err != nil {
 		t.Fatal("error putting to datastore: ", err)
 	}
@@ -457,8 +455,11 @@ func TestBasicPutGet(t *testing.T) {
 }
 
 func TestNotFounds(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	badk := ds.NewKey("notreal")
 
@@ -481,8 +482,11 @@ func TestNotFounds(t *testing.T) {
 }
 
 func TestManyKeysAndQuery(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	var keys []ds.Key
 	var keystrs []string
@@ -562,8 +566,11 @@ func TestManyKeysAndQuery(t *testing.T) {
 }
 
 func TestGC(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	count := 10000
 
@@ -615,20 +622,13 @@ func TestGC(t *testing.T) {
 // this interval is not configurable, we re-open the database
 // (the size is always calculated on Open) to make things quick.
 func TestDiskUsage(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(path)
-
+	path := t.TempDir()
 	d, err := NewDatastore(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer d.Close()
 
-	if err != nil {
-		t.Fatal(err)
-	}
 	addTestCases(t, d, testcases)
 	d.Close()
 
@@ -636,25 +636,20 @@ func TestDiskUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer d.Close()
+
 	s, _ := d.DiskUsage(bg)
 	if s == 0 {
 		t.Error("expected some size")
 	}
-	d.Close()
 }
 
 func TestTxnDiscard(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
+	d, err := NewDatastore(t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(path)
-
-	d, err := NewDatastore(path, nil)
-	defer os.RemoveAll(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer d.Close()
 
 	txn, err := d.NewTransaction(bg, false)
 	if err != nil {
@@ -672,21 +667,14 @@ func TestTxnDiscard(t *testing.T) {
 	if has {
 		t.Fatal("key written in aborted transaction still exists")
 	}
-
-	d.Close()
 }
 
 func TestTxnCommit(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
+	d, err := NewDatastore(t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(path)
-
-	d, err := NewDatastore(path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer d.Close()
 
 	txn, err := d.NewTransaction(bg, false)
 	if err != nil {
@@ -707,21 +695,14 @@ func TestTxnCommit(t *testing.T) {
 	if !has {
 		t.Fatal("key written in committed transaction does not exist")
 	}
-
-	d.Close()
 }
 
 func TestTxnBatch(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
+	d, err := NewDatastore(t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(path)
-
-	d, err := NewDatastore(path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer d.Close()
 
 	txn, err := d.NewTransaction(bg, false)
 	if err != nil {
@@ -761,21 +742,14 @@ func TestTxnBatch(t *testing.T) {
 			}
 		}
 	}
-
-	d.Close()
 }
 
 func TestTTL(t *testing.T) {
-	path, err := os.MkdirTemp(os.TempDir(), "testing_badger_")
+	d, err := NewDatastore(t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(path)
-
-	d, err := NewDatastore(path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer d.Close()
 
 	txn, err := d.NewTransaction(bg, false)
 	if err != nil {
@@ -828,15 +802,14 @@ func TestTTL(t *testing.T) {
 			t.Fatal("record with ttl did not expire")
 		}
 	}
-
-	d.Close()
 }
 
 func TestExpirations(t *testing.T) {
-	var err error
-
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	txn, err := d.NewTransaction(bg, false)
 	if err != nil {
@@ -915,8 +888,11 @@ func TestExpirations(t *testing.T) {
 }
 
 func TestSuite(t *testing.T) {
-	d, done := newDS(t)
-	defer done()
+	d, err := NewDatastore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
 
 	dstest.SubtestAll(t, d)
 }

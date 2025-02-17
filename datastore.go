@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -128,22 +129,26 @@ var _ ds.Batching = (*Datastore)(nil)
 // NewDatastore creates a new badger datastore.
 //
 // DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
-func NewDatastore(path string, options *Options) (*Datastore, error) {
+func NewDatastore(path string, opts *Options) (*Datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
 	var gcDiscardRatio float64
 	var gcSleep time.Duration
 	var gcInterval time.Duration
-	if options == nil {
+	if opts == nil {
 		opt = badger.DefaultOptions("")
 		gcDiscardRatio = DefaultOptions.GcDiscardRatio
 		gcSleep = DefaultOptions.GcSleep
 		gcInterval = DefaultOptions.GcInterval
 	} else {
-		opt = options.Options
-		gcDiscardRatio = options.GcDiscardRatio
-		gcSleep = options.GcSleep
-		gcInterval = options.GcInterval
+		opt = opts.Options
+		gcDiscardRatio = opts.GcDiscardRatio
+		gcSleep = opts.GcSleep
+		gcInterval = opts.GcInterval
+	}
+
+	if os.Getenv("GOARCH") == "386" {
+		opt.TableLoadingMode = options.FileIO
 	}
 
 	if gcSleep <= 0 {
