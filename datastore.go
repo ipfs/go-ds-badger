@@ -108,12 +108,8 @@ func init() {
 	// reading (in some tests).
 	DefaultOptions.Options.ValueLogLoadingMode = options.FileIO
 
-	if os.Getenv("GOARCH") == "386" {
-		DefaultOptions.Options.TableLoadingMode = options.FileIO
-	} else {
-		// Explicitly set this to mmap. This doesn't use much memory anyways.
-		DefaultOptions.Options.TableLoadingMode = options.MemoryMap
-	}
+	// Explicitly set this to mmap. This doesn't use much memory anyways.
+	DefaultOptions.Options.TableLoadingMode = options.MemoryMap
 
 	// Reduce this from 64MiB to 16MiB. That means badger will hold on to
 	// 20MiB by default instead of 80MiB.
@@ -133,22 +129,26 @@ var _ ds.Batching = (*Datastore)(nil)
 // NewDatastore creates a new badger datastore.
 //
 // DO NOT set the Dir and/or ValuePath fields of opt, they will be set for you.
-func NewDatastore(path string, options *Options) (*Datastore, error) {
+func NewDatastore(path string, opts *Options) (*Datastore, error) {
 	// Copy the options because we modify them.
 	var opt badger.Options
 	var gcDiscardRatio float64
 	var gcSleep time.Duration
 	var gcInterval time.Duration
-	if options == nil {
+	if opts == nil {
 		opt = badger.DefaultOptions("")
 		gcDiscardRatio = DefaultOptions.GcDiscardRatio
 		gcSleep = DefaultOptions.GcSleep
 		gcInterval = DefaultOptions.GcInterval
 	} else {
-		opt = options.Options
-		gcDiscardRatio = options.GcDiscardRatio
-		gcSleep = options.GcSleep
-		gcInterval = options.GcInterval
+		opt = opts.Options
+		gcDiscardRatio = opts.GcDiscardRatio
+		gcSleep = opts.GcSleep
+		gcInterval = opts.GcInterval
+	}
+
+	if os.Getenv("GOARCH") == "386" {
+		opt.TableLoadingMode = options.FileIO
 	}
 
 	if gcSleep <= 0 {
