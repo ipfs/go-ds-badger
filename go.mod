@@ -1,5 +1,7 @@
 module github.com/ipfs/go-ds-badger
 
+go 1.23
+
 require (
 	github.com/dgraph-io/badger v1.6.2
 	github.com/ipfs/go-datastore v0.7.1-0.20250225204649-1676d105e588
@@ -21,5 +23,3 @@ require (
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 )
-
-go 1.23
