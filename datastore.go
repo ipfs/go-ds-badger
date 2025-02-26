@@ -15,7 +15,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logger "github.com/ipfs/go-log/v2"
-	goprocess "github.com/jbenet/goprocess"
 )
 
 // badgerLog is a local wrapper for go-log to make the interface
@@ -733,18 +732,17 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 	}
 
 	it := t.txn.NewIterator(opt)
-	qrb := dsq.NewResultBuilder(q)
-	qrb.Process.Go(func(worker goprocess.Process) {
+	results := dsq.ResultsWithContext(q, func(ctx context.Context, output chan<- dsq.Result) {
 		t.ds.closeLk.RLock()
 		closedEarly := false
 		defer func() {
 			t.ds.closeLk.RUnlock()
 			if closedEarly {
 				select {
-				case qrb.Output <- dsq.Result{
+				case output <- dsq.Result{
 					Error: ErrClosed,
 				}:
-				case <-qrb.Process.Closing():
+				case <-ctx.Done():
 				}
 			}
 
@@ -806,11 +804,11 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 
 			if err != nil {
 				select {
-				case qrb.Output <- dsq.Result{Error: err}:
+				case output <- dsq.Result{Error: err}:
 				case <-t.ds.closing: // datastore closing.
 					closedEarly = true
 					return
-				case <-worker.Closing(): // client told us to close early
+				case <-ctx.Done(): // client told us to close early
 					return
 				}
 			}
@@ -849,20 +847,18 @@ func (t *txn) query(q dsq.Query) (dsq.Results, error) {
 			}
 
 			select {
-			case qrb.Output <- result:
+			case output <- result:
 				sent++
 			case <-t.ds.closing: // datastore closing.
 				closedEarly = true
 				return
-			case <-worker.Closing(): // client told us to close early
+			case <-ctx.Done(): // client told us to close early
 				return
 			}
 		}
 	})
 
-	go qrb.Process.CloseAfterChildren() //nolint
-
-	return qrb.Results(), nil
+	return results, nil
 }
 
 func (t *txn) Commit(ctx context.Context) error {
