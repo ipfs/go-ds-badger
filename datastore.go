@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -144,10 +143,6 @@ func NewDatastore(path string, opts *Options) (*Datastore, error) {
 		gcDiscardRatio = opts.GcDiscardRatio
 		gcSleep = opts.GcSleep
 		gcInterval = opts.GcInterval
-	}
-
-	if os.Getenv("GOARCH") == "386" {
-		opt.TableLoadingMode = options.FileIO
 	}
 
 	if gcSleep <= 0 {
