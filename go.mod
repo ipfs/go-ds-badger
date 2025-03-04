@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/dgraph-io/badger v1.6.2
-	github.com/ipfs/go-datastore v0.8.1
+	github.com/ipfs/go-datastore v0.8.2
 	github.com/ipfs/go-log/v2 v2.5.1
 )
 
