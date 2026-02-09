@@ -1,5 +1,23 @@
 # go-ds-badger
 
+> [!CAUTION]
+> ## Not maintained, legacy package
+>
+> This is a datastore implementation using badger v1, which has not been
+> maintained by its upstream maintainers for over 5 years. This repository is
+> no longer maintained either. Do not use it for new projects.
+>
+> This repo contains a datastore implementation using Badger v1. If you are
+> looking for a newer version, check out:
+>
+> - [go-ds-badger2](https://github.com/ipfs/go-ds-badger2) (Badger v2)
+> - [go-ds-badger3](https://github.com/ipfs/go-ds-badger3) (Badger v3)
+> - [go-ds-pebble](https://github.com/ipfs/go-ds-pebble) (Pebble, may solve issues badger's architecture could not support)
+>
+> If you are using this in [Kubo](https://github.com/ipfs/kubo), see the
+> [badger v1 removal plan](https://github.com/ipfs/kubo/issues/11186) for
+> migration guidance.
+
 [![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io)
 [![](https://img.shields.io/badge/project-IPFS-blue.svg?style=flat-square)](http://ipfs.io/)
 [![](https://img.shields.io/badge/freenode-%23ipfs-blue.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23ipfs)
@@ -9,24 +27,15 @@
 
 > Datastore implementation using [badger](https://github.com/dgraph-io/badger) as backend.
 
-## Lead Maintainer
-
-[Łukasz Magiera](https://github.com/magik6k)
-
 ## Table of Contents
 
 - [Documentation](#documentation)
-- [Badger2](#badger2)
 - [Contribute](#contribute)
 - [License](#license)
 
 ## Documentation
 
 https://godoc.org/github.com/ipfs/go-ds-badger
-
-## Badger2
-
-This repo contains a datastore implementation using Badger v1. If you are looking for a Badger v2 datastore check out https://github.com/ipfs/go-ds-badger2.
 
 ## Contribute
 
